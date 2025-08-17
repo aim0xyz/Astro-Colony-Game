@@ -164,7 +164,6 @@
     if (user) {
       try {
         await setDoc(doc(db, "gamestates", user.uid), window.gameState);
-        showNotification("Game saved!", true); // Changed notification
       } catch (error) {
         console.error("Error saving game:", error);
         showNotification("Failed to save game.", false);
