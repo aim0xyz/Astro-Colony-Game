@@ -58,6 +58,7 @@
   const showLoginBtn = document.getElementById('showLogin');
   const logoutBtn = document.getElementById('logoutBtn');
   const userStatus = document.getElementById('userStatus');
+  const saveGameBtn = document.getElementById('saveGameBtn');
   const profileBtn = document.getElementById('profileBtn'); // <<< NEW: Profile Button
   
   // --- Profile Modal Elements <<< NEW SECTION ---
@@ -458,11 +459,12 @@
 
 <!-- Game UI (initially hidden) -->
 <div class="game-container" id="gameContainer" style="display:none;">
-  <h1 class="title">🌌 Astro Colony</h1>
+  <h1 class="title">Astro Colony</h1>
   <div style="text-align:center; margin-bottom:10px;">
-    <span id="userStatus" style="font-size:10px;">Not logged in</span> 
-    <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px;">👤 Profile</button>
-<button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px;">🚪 Logout</button>
+    <span id="userStatus" style="font-size:10px;">Not logged in</span> | 
+    <button class="btn" id="saveGameBtn" style="width:auto; padding:5px 10px; font-size:10px;">Save</button>
+    <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px;">Profile</button> <!-- NEW PROFILE BUTTON -->
+    <button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px;">Logout</button>
   </div>
   <div class="season-info">
     <h3>Cycle <span id="seasonDay">1</span></h3>
@@ -473,30 +475,30 @@
     <div class="stat"><div class="stat-label">Credits</div><div class="stat-value" id="gold">100</div></div>
   </div>
   <div class="controls">
-    <button class="btn" id="plantAllBtn">🚀 Deploy All Drones (<span id="plantCost">0</span> cr)</button>
-    <button class="btn" id="harvestAllBtn">💎 Collect All Crystals</button>
+    <button class="btn" id="plantAllBtn">Deploy All Drones (<span id="plantCost">0</span> cr)</button>
+    <button class="btn" id="harvestAllBtn">Collect All Crystals</button>
   </div>
   <div class="farm-grid" id="farmGrid"></div>
   <!-- Upgrades -->
   <div class="upgrades">
-    <h3>⚙️ Drone & Mining Upgrades</h3>
-    <div class="upgrade-item"><span class="upgrade-text">⚡ Faster Mining (Lv <span id="growthLevel">1</span>) <button class="info-btn" data-info="growth">?</button></span><button class="btn" id="growthUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">🌟 High-Yield Extractors (Lv <span id="yieldLevel">1</span>) <button class="info-btn" data-info="yield">?</button></span><button class="btn" id="yieldUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">🍀 Cosmic Luck (Lv <span id="luckLevel">1</span>) <button class="info-btn" data-info="luck">?</button></span><button class="btn" id="luckUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">🛰️ Drone Fleet Capacity (Lv <span id="droneLevel">1</span>) <button class="info-btn" data-info="drone">?</button></span><button class="btn" id="droneUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">📦 Quantum Storage (Lv <span id="storageLevel">1</span>) <button class="info-btn" data-info="storage">?</button></span><button class="btn" id="storageUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">🤖 Autonomous Drone AI (Permanent) <button class="info-btn" data-info="autodeploy">?</button></span><button class="btn" id="autoDeployBtn">Buy (5000 cr)</button></div>
+    <h3>Drone & Mining Upgrades</h3>
+    <div class="upgrade-item"><span class="upgrade-text">Faster Mining (Lv <span id="growthLevel">1</span>) <button class="info-btn" data-info="growth">?</button></span><button class="btn" id="growthUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">High-Yield Extractors (Lv <span id="yieldLevel">1</span>) <button class="info-btn" data-info="yield">?</button></span><button class="btn" id="yieldUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Cosmic Luck (Lv <span id="luckLevel">1</span>) <button class="info-btn" data-info="luck">?</button></span><button class="btn" id="luckUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Drone Fleet Capacity (Lv <span id="droneLevel">1</span>) <button class="info-btn" data-info="drone">?</button></span><button class="btn" id="droneUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Quantum Storage (Lv <span id="storageLevel">1</span>) <button class="info-btn" data-info="storage">?</button></span><button class="btn" id="storageUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Autonomous Drone AI (Permanent) <button class="info-btn" data-info="autodeploy">?</button></span><button class="btn" id="autoDeployBtn">Buy (5000 cr)</button></div>
   </div>
   <!-- Research -->
   <div class="upgrades">
-    <h3>🔬 Research Lab</h3>
-    <div class="upgrade-item"><span class="upgrade-text">🪐 Terraform Expansion (Plots <span id="researchPlots">0</span>) <button class="info-btn" data-info="plots">?</button></span><button class="btn" id="researchPlotBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">🔥 Deep Core Drilling (Lv <span id="deepLevel">0</span>) <button class="info-btn" data-info="deep">?</button></span><button class="btn" id="deepUpgradeBtn"></button></div>
-    <div class="upgrade-item"><span class="upgrade-text">👽 Xeno Trade Pact (Lv <span id="tradeLevel">0</span>) <button class="info-btn" data-info="trade">?</button></span><button class="btn" id="tradeUpgradeBtn"></button></div>
+    <h3>Research Lab</h3>
+    <div class="upgrade-item"><span class="upgrade-text">Terraform Expansion (Plots <span id="researchPlots">0</span>) <button class="info-btn" data-info="plots">?</button></span><button class="btn" id="researchPlotBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Deep Core Drilling (Lv <span id="deepLevel">0</span>) <button class="info-btn" data-info="deep">?</button></span><button class="btn" id="deepUpgradeBtn"></button></div>
+    <div class="upgrade-item"><span class="upgrade-text">Xeno Trade Pact (Lv <span id="tradeLevel">0</span>) <button class="info-btn" data-info="trade">?</button></span><button class="btn" id="tradeUpgradeBtn"></button></div>
   </div>
   <!-- Exchange -->
   <div class="exchange">
-    <h3>🏦 Galactic Exchange</h3>
+    <h3>Galactic Exchange</h3>
     <p>Swap 100 Crystal Points → <span id="exchangeRate">30</span> Credits <button class="info-btn" data-info="exchange">?</button></p>
     <div id="crashTimer"></div>
     <div class="exchange-buttons">
@@ -516,7 +518,7 @@
 <div class="modal" id="profileModal">
   <div class="modal-content">
     <button id="closeModalProfile">✖</button>
-    <h2 style="color:#00f6ff;">👤 Your Profile</h2>
+    <h2 style="color:#00f6ff;">Your Profile</h2>
     <p style="text-align:left; margin-bottom: 5px;">**Email:** <span id="profileEmailDisplay"></span></p>
     <p style="text-align:left; margin-top:15px; margin-bottom: 5px;">**Username:**</p>
     <input type="text" id="usernameInput" placeholder="Enter your desired username">
