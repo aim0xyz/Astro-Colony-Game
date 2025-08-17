@@ -58,7 +58,6 @@
   const showLoginBtn = document.getElementById('showLogin');
   const logoutBtn = document.getElementById('logoutBtn');
   const userStatus = document.getElementById('userStatus');
-  const saveGameBtn = document.getElementById('saveGameBtn');
   const profileBtn = document.getElementById('profileBtn'); // <<< NEW: Profile Button
   
   // --- Profile Modal Elements <<< NEW SECTION ---
@@ -71,7 +70,7 @@
 
   // --- AUTO-SAVE VARIABLES AND FUNCTIONS ---
   let autoSaveIntervalId = null;
-  const AUTO_SAVE_INTERVAL = 30 * 1000; // Save every 30 seconds
+  const AUTO_SAVE_INTERVAL = 10 * 1000; // Save every 30 seconds
 
   function startAutoSave() {
       if (autoSaveIntervalId === null) { // Only start if not already running
@@ -462,8 +461,8 @@
   <h1 class="title">🌌 Astro Colony</h1>
   <div style="text-align:center; margin-bottom:10px;">
     <span id="userStatus" style="font-size:10px;">Not logged in</span> 
-    <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px;">👤 Profile</button> <!-- NEW PROFILE BUTTON -->
-    <button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px;">🚪 Logout</button>
+    <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px;">👤 Profile</button>
+<button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px;">🚪 Logout</button>
   </div>
   <div class="season-info">
     <h3>Cycle <span id="seasonDay">1</span></h3>
