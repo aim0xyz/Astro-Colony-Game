@@ -13,7 +13,8 @@
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
     signOut, 
-    onAuthStateChanged 
+    onAuthStateChanged,
+    updateProfile // <<< NEW: Import updateProfile
   } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
   import { 
     getFirestore, 
@@ -58,6 +59,35 @@
   const logoutBtn = document.getElementById('logoutBtn');
   const userStatus = document.getElementById('userStatus');
   const saveGameBtn = document.getElementById('saveGameBtn');
+  const profileBtn = document.getElementById('profileBtn'); // <<< NEW: Profile Button
+  
+  // --- Profile Modal Elements <<< NEW SECTION ---
+  const profileModal = document.getElementById('profileModal');
+  const closeModalProfile = document.getElementById('closeModalProfile');
+  const profileEmailDisplay = document.getElementById('profileEmailDisplay');
+  const usernameInput = document.getElementById('usernameInput');
+  const saveUsernameBtn = document.getElementById('saveUsernameBtn');
+  // --- END NEW SECTION ---
+
+  // --- AUTO-SAVE VARIABLES AND FUNCTIONS ---
+  let autoSaveIntervalId = null;
+  const AUTO_SAVE_INTERVAL = 30 * 1000; // Save every 30 seconds
+
+  function startAutoSave() {
+      if (autoSaveIntervalId === null) { // Only start if not already running
+          autoSaveIntervalId = setInterval(saveGame, AUTO_SAVE_INTERVAL);
+          console.log(`Auto-save started (every ${AUTO_SAVE_INTERVAL / 1000} seconds).`);
+      }
+  }
+
+  function stopAutoSave() {
+      if (autoSaveIntervalId !== null) {
+          clearInterval(autoSaveIntervalId);
+          autoSaveIntervalId = null;
+          console.log("Auto-save stopped.");
+      }
+  }
+  // --- END AUTO-SAVE FUNCTIONS ---
 
   // --- Firebase Auth Functions ---
   async function register() {
@@ -90,19 +120,59 @@
     }
   }
 
+  // --- User Profile Functions <<< NEW SECTION ---
+  async function updateUsername() {
+    const user = auth.currentUser;
+    if (user) {
+      const newUsername = usernameInput.value.trim();
+      if (newUsername.length > 0) {
+        try {
+          await updateProfile(user, {
+            displayName: newUsername
+          });
+          userStatus.textContent = `Logged in as: ${user.displayName}`; // Update status
+          showNotification("Username updated successfully!", true);
+        } catch (error) {
+          console.error("Error updating username:", error);
+          showNotification("Failed to update username: " + error.message, false);
+        }
+      } else {
+        showNotification("Username cannot be empty.", false);
+      }
+    }
+  }
+
+  function openProfileModal() {
+    const user = auth.currentUser;
+    if (user) {
+      profileEmailDisplay.textContent = user.email;
+      usernameInput.value = user.displayName || ''; // Populate with current display name or empty
+      profileModal.style.display = 'flex';
+    } else {
+      showNotification("Please log in to view your profile.", false);
+    }
+  }
+
+  function closeProfileModal() {
+    profileModal.style.display = 'none';
+  }
+  // --- END NEW SECTION ---
+
   // --- Game Data Save/Load Functions ---
   async function saveGame() {
     const user = auth.currentUser;
     if (user) {
       try {
         await setDoc(doc(db, "gamestates", user.uid), window.gameState);
-        showNotification("Game saved successfully!", true);
+        showNotification("Game saved!", true); // Changed notification
       } catch (error) {
         console.error("Error saving game:", error);
         showNotification("Failed to save game.", false);
       }
     } else {
-      showNotification("You must be logged in to save.", false);
+      // This case might happen if auto-save triggers right as user logs out.
+      // No need for a notification, as user is no longer logged in.
+      console.log("Attempted to save game but no user is logged in.");
     }
   }
 
@@ -130,15 +200,18 @@
   onAuthStateChanged(auth, (user) => {
     if (user) {
       // User is signed in
-      userStatus.textContent = `Logged in as: ${user.email}`;
+      // Display username if available, otherwise email
+      userStatus.textContent = `Logged in as: ${user.displayName || user.email}`; 
       authContainer.style.display = 'none';
       gameContainer.style.display = 'block';
       loadGame(user.uid); // Load game progress for this user
+      startAutoSave(); // START AUTO-SAVE WHEN USER LOGS IN
     } else {
       // User is signed out
       userStatus.textContent = 'Not logged in';
       authContainer.style.display = 'block';
       gameContainer.style.display = 'none';
+      stopAutoSave(); // STOP AUTO-SAVE WHEN USER LOGS OUT
       // Reset game state to default if not logged in
       window.gameState = {
         applePoints:0,gold:100,plotsOwned:4,plots:[],autoDeploy:false,
@@ -150,6 +223,15 @@
       initializeGame(false); // Initialize game with default state
       renderFarm(); // Make sure farm is rendered even if empty
     }
+  });
+
+  // --- Event Listener for Tab/Window Hiding (for immediate save) ---
+  document.addEventListener('visibilitychange', () => {
+      if (document.hidden && auth.currentUser) {
+          // If the document becomes hidden (user switches tabs/minimizes), save the game
+          console.log("Document hidden, attempting auto-save...");
+          saveGame();
+      }
   });
 
   // --- Event Listeners for Auth UI ---
@@ -165,6 +247,17 @@
     registerForm.style.display = 'none';
   });
   saveGameBtn.addEventListener('click', saveGame); // New save button
+  profileBtn.addEventListener('click', openProfileModal); // <<< NEW: Profile Button Listener
+  closeModalProfile.addEventListener('click', closeProfileModal); // <<< NEW: Close Profile Modal Listener
+  saveUsernameBtn.addEventListener('click', updateUsername); // <<< NEW: Save Username Listener
+
+  // Close profile modal when clicking outside of it
+  profileModal.addEventListener('click', (e) => {
+    if (e.target === profileModal) {
+      closeProfileModal();
+    }
+  });
+
 
   // --- Game Initialization function (now separated) ---
   // This function will be called by the auth observer
@@ -304,6 +397,16 @@
   .modal-content{background:#222;color:#fff;padding:20px;border:2px solid #0aff9d;max-width:400px;text-align:center;position:relative;}
   .modal-content h2{margin-bottom:10px;color:#0aff9d;}
   .modal-content button{position:absolute;top:5px;right:5px;background:#ff4444;color:#fff;border:none;padding:4px 8px;cursor:pointer;}
+  .modal-content input[type="text"], .modal-content input[type="email"] {
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #00f6ff;
+    background: #0d0d2b;
+    color: #fff;
+    font-family: 'PixelFont', monospace;
+    font-size: 12px;
+  }
 
   /* --- Auth Specific Styles --- */
   #authContainer {
@@ -359,7 +462,8 @@
   <h1 class="title">🌌 Astro Colony</h1>
   <div style="text-align:center; margin-bottom:10px;">
     <span id="userStatus" style="font-size:10px;">Not logged in</span> | 
-    <button class="btn" id="saveGameBtn" style="width:auto; padding:5px 10px; font-size:10px;">💾 Save Game</button>
+    <button class="btn" id="saveGameBtn" style="width:auto; padding:5px 10px; font-size:10px;">💾 Manual Save</button>
+    <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px;">👤 Profile</button> <!-- NEW PROFILE BUTTON -->
     <button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px;">🚪 Logout</button>
   </div>
   <div class="season-info">
@@ -409,6 +513,18 @@
   <button id="closeModal">✖</button>
   <h2 id="modalTitle"></h2><p id="modalText"></p>
 </div></div>
+
+<!-- NEW PROFILE MODAL -->
+<div class="modal" id="profileModal">
+  <div class="modal-content">
+    <button id="closeModalProfile">✖</button>
+    <h2 style="color:#00f6ff;">👤 Your Profile</h2>
+    <p style="text-align:left; margin-bottom: 5px;">**Email:** <span id="profileEmailDisplay"></span></p>
+    <p style="text-align:left; margin-top:15px; margin-bottom: 5px;">**Username:**</p>
+    <input type="text" id="usernameInput" placeholder="Enter your desired username">
+    <button class="btn" id="saveUsernameBtn" style="width:100%;">Save Username</button>
+  </div>
+</div>
 
 <script>
 // Make sure window.gameState and window.dom are always used for consistency
