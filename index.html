@@ -87,22 +87,22 @@
   async function register() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, registerEmail.value, registerPassword.value);
-      showNotification("Registered & Logged in as " + userCredential.user.email, true);
+      showNotification("Registered & Logged in as " + userCredential.user.email, true, 'system');
     } catch (error) {
-      showNotification("Registration failed: " + error.message, false);
+      showNotification("Registration failed: " + error.message, false, 'system');
     }
   }
   async function login() {
     try {
       await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
-      showNotification("Logged in!", true);
+      showNotification("Logged in!", true, 'system');
     } catch (error) {
-      showNotification("Login failed: " + error.message, false);
+      showNotification("Login failed: " + error.message, false, 'system');
     }
   }
   async function logout() {
-    try { await signOut(auth); showNotification("Logged out.", true); }
-    catch (err) { showNotification("Logout failed: " + err.message, false); }
+    try { await signOut(auth); showNotification("Logged out.", true, 'system'); }
+    catch (err) { showNotification("Logout failed: " + err.message, false, 'system'); }
   }
 
   // --- Profile Editing ---
@@ -114,13 +114,13 @@
         try {
           await updateProfile(user, { displayName: newUsername });
           userStatus.textContent = `Logged in as: ${user.displayName}`;
-          showNotification("Username updated!", true);
+          showNotification("Username updated!", true, 'system');
           closeProfileModal();
         } catch (err) {
-          showNotification("Update failed: " + err.message, false);
+          showNotification("Update failed: " + err.message, false, 'system');
         }
       } else {
-        showNotification("Username cannot be empty.", false);
+        showNotification("Username cannot be empty.", false, 'system');
       }
     }
   }
@@ -153,7 +153,7 @@
       if (snap.exists()) {
         window.gameState = snap.data();
         initializeGame(true);
-        showNotification("Game loaded!", true);
+        showNotification("Game loaded!", true, 'system');
       } else {
         initializeGame(false); // No saved game, start new
       }
@@ -210,9 +210,9 @@
       p.growthDuration = Math.max(3000, 30000 / window.gameState.upgrades.growth.level * (1 - 0.1 * window.gameState.research.deep));
       window.gameState.gold -= cost;
 
-      // Only show notification if not auto-deploying
+      // Only show notification if not auto-deploying (manual action)
       if (!window.gameState.autoDeploy) {
-          showNotification("🛰️ Drone deployed!", true);
+          showNotification("🛰️ Drone deployed!", true, 'manual');
       }
       return cost; // Return the cost for consolidation
   }
@@ -232,9 +232,9 @@
       p.state = 'empty';
       p.plantTime = null;
 
-      // Only show notification if not auto-harvesting
+      // Only show notification if not auto-harvesting (manual action)
       if (!window.gameState.autoDeploy) {
-          showNotification(`${luck > 1 ? '🌠' : '💎'} +${cpGain} CP`, luck > 1);
+          showNotification(`${luck > 1 ? '🌠' : '💎'} +${cpGain} CP`, luck > 1, 'manual');
       }
       return { cpGain: cpGain, goldGain: goldGain }; // Return the gains for consolidation
   }
@@ -253,7 +253,7 @@
       window.gameState.gold-=window.gameState.upgrades[type].cost;
       window.gameState.upgrades[type].level++;
       window.gameState.upgrades[type].cost=Math.floor(window.gameState.upgrades[type].cost*1.5);
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} upgraded!`,true);
+      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} upgraded!`,true,'purchase');
       updateUI();
   }
   function buyResearch(type){
@@ -261,7 +261,7 @@
       window.gameState.applePoints-=window.gameState.research[type+'Cost'];
       window.gameState.research[type]++;
       window.gameState.research[type+'Cost']=Math.floor(window.gameState.research[type+'Cost']*2.5);
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} Research complete!`,true);
+      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} Research complete!`,true,'purchase');
       if(type==='plots'){addPlot();}
       updateUI();
   }
@@ -278,7 +278,7 @@
       if(window.gameState.gold<5000)return;
       window.gameState.gold-=5000;
       window.gameState.autoDeploy=true;
-      showNotification("Autonomous Drone AI activated!",true);
+      showNotification("Autonomous Drone AI activated!",true,'purchase');
       updateUI();
   }
   function exchangeCP(amount){
@@ -286,7 +286,7 @@
       let goldGain=Math.floor(amount*calcRate());
       window.gameState.applePoints-=amount;
       window.gameState.gold+=goldGain;
-      showNotification(`Exchanged ${amount} CP for ${goldGain} Gold!`,true);
+      showNotification(`Exchanged ${amount} CP for ${goldGain} Gold!`,true,'exchange');
       updateUI();
   }
   function exchangeCPMax(){
@@ -304,7 +304,7 @@
       return rate.toFixed(2);
   }
 
-  // MODIFIED updatePlots to handle auto-deploy and consolidated notifications
+  // MODIFIED updatePlots to handle auto-deploy and consolidated notifications, governed by notification settings
   function updatePlots(){
       let elems = window.dom.farmGrid.querySelectorAll('.plot');
       window.gameState.plots.forEach((p,i)=>{
@@ -327,25 +327,25 @@
 
           // Auto-harvest any ready plots
           window.gameState.plots.filter(p => p.state === 'ready').forEach(p => {
-              const result = harvestPlot(p); // Harvest, but no individual notification
+              const result = harvestPlot(p); // Harvest, but harvestPlot suppresses manual notifications when autoDeploy is true
               autoHarvestedCP += result.cpGain;
               autoHarvestedGold += result.goldGain;
           });
 
           // Auto-plant any empty plots
           window.gameState.plots.filter(p => p.state === 'empty').forEach(p => {
-              const cost = plantSeed(p); // Plant, but no individual notification
+              const cost = plantSeed(p); // Plant, but plantSeed suppresses manual notifications when autoDeploy is true
               if (cost > 0) { // Check if planting was successful
                   autoPlantedCount++;
               }
           });
 
-          // Show consolidated notifications for auto-actions
-          if (autoHarvestedCP > 0) {
-              showNotification(`🤖 Auto-collected ${autoHarvestedCP} CP!`, true);
+          // Show consolidated notifications for auto-actions only if user enabled 'auto' notifications
+          if (autoHarvestedCP > 0 && window.gameState.notificationSettings && window.gameState.notificationSettings.auto) {
+              showNotification(`🤖 Auto-collected ${autoHarvestedCP} CP!`, true, 'auto');
           }
-          if (autoPlantedCount > 0) {
-               showNotification(`🤖 Auto-deployed ${autoPlantedCount} drones!`, true);
+          if (autoPlantedCount > 0 && window.gameState.notificationSettings && window.gameState.notificationSettings.auto) {
+               showNotification(`🤖 Auto-deployed ${autoPlantedCount} drones!`, true, 'auto');
           }
       }
   }
@@ -387,6 +387,14 @@
         window.dom.plantAllBtn.disabled=(empties===0||window.gameState.gold<empties*plantCostPer());
         window.dom.harvestAllBtn.disabled=window.gameState.plots.every(p=>p.state!=='ready');
     }
+
+    // Update notification UI toggles (if present)
+    if(window.dom.notifManual) window.dom.notifManual.checked = !!window.gameState.notificationSettings.manual;
+    if(window.dom.notifAuto) window.dom.notifAuto.checked = !!window.gameState.notificationSettings.auto;
+    if(window.dom.notifMarket) window.dom.notifMarket.checked = !!window.gameState.notificationSettings.market;
+    if(window.dom.notifPurchase) window.dom.notifPurchase.checked = !!window.gameState.notificationSettings.purchase;
+    if(window.dom.notifExchange) window.dom.notifExchange.checked = !!window.gameState.notificationSettings.exchange;
+    if(window.dom.notifSystem) window.dom.notifSystem.checked = !!window.gameState.notificationSettings.system;
   }
 
   let gameLoopInterval;
@@ -402,16 +410,16 @@
       if(now>=window.gameState.seasonEndTime){
         window.gameState.seasonDay++;
         window.gameState.seasonEndTime = now + 30 * 1000; // Next season in 30 seconds
-        showNotification(`Day ${window.gameState.seasonDay}!`, true);
+        showNotification(`Day ${window.gameState.seasonDay}!`, true, 'system');
 
         // Random market events
         let rand = Math.random();
         if(rand < 0.1) { // 10% chance of crash
             window.gameState.marketCrashUntil = now + 15 * 1000; // 15s crash
-            showNotification("Market Crash!", false);
+            showNotification("Market Crash!", false, 'market');
         } else if (rand < 0.2) { // 10% chance of boom
             window.gameState.boomUntil = now + 15 * 1000; // 15s boom
-            showNotification("Market Boom!", true);
+            showNotification("Market Boom!", true, 'market');
         }
       }
       window.dom.seasonDay.textContent=window.gameState.seasonDay;
@@ -424,8 +432,16 @@
         upgrades:{growth:{level:1,cost:500},yield:{level:1,cost:750},luck:{level:1,cost:1000},drone:{level:1,cost:1200},storage:{level:1,cost:1500}},
         research:{plots:0,plotsCost:2000,deep:0,deepCost:3000,trade:0,tradeCost:5000},
         seasonDay:1,seasonEndTime:Date.now()+30*1000,lastDayTick:Date.now(), // 30 seconds for a "day" for testing
-        marketCrashUntil:0,boomUntil:0};
+        marketCrashUntil:0,boomUntil:0,
+        // Notification settings defaults:
+        notificationSettings: { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true }
+      };
       for(let i=0;i<window.gameState.plotsOwned;i++){window.gameState.plots.push({id:i,state:'empty'});}
+    } else {
+      // Ensure notificationSettings exist after load
+      if(!window.gameState.notificationSettings) {
+        window.gameState.notificationSettings = { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true };
+      }
     }
 
     // Re-assign dom elements to window.dom as they might be called before all are set
@@ -448,32 +464,42 @@
 
         researchPlots:document.getElementById('researchPlots'),researchPlotBtn:document.getElementById('researchPlotBtn'),
         deepLevel:document.getElementById('deepLevel'),deepUpgradeBtn:document.getElementById('deepUpgradeBtn'),
-        tradeLevel:document.getElementById('tradeLevel'),tradeUpgradeBtn:document.getElementById('tradeTradeBtn'), // Corrected ID in HTML
+        tradeLevel:document.getElementById('tradeLevel'),tradeUpgradeBtn:document.getElementById('tradeTradeBtn'),
+
+        // exchangeRate moved into the exchange section in the HTML
         exchangeRate:document.getElementById('exchangeRate'),
         exchangeBtn:document.getElementById('exchangeBtn'),exchange1000Btn:document.getElementById('exchange1000Btn'),exchangeMaxBtn:document.getElementById('exchangeMaxBtn'),
 
         plantAllBtn:document.getElementById('plantAllBtn'),
         harvestAllBtn:document.getElementById('harvestAllBtn'),
         crashTimer:document.getElementById('crashTimer'),
-        gameActionButtons:document.getElementById('gameActionButtons') // <--- ADDED THIS FOR HIDING BUTTONS
+        gameActionButtons:document.getElementById('gameActionButtons'),
+
+        // Notification toggles
+        notifManual:document.getElementById('notifManual'),
+        notifAuto:document.getElementById('notifAuto'),
+        notifMarket:document.getElementById('notifMarket'),
+        notifPurchase:document.getElementById('notifPurchase'),
+        notifExchange:document.getElementById('notifExchange'),
+        notifSystem:document.getElementById('notifSystem')
     };
 
     // Set up event listeners for newly rendered elements (plots) or re-bind if game loaded
     // Remove listeners first to prevent duplicates on game load
-    window.dom.plantAllBtn.removeEventListener('click', plantAll);
-    window.dom.harvestAllBtn.removeEventListener('click', harvestAll);
-    window.dom.growthUpgradeBtn.removeEventListener('click', () => buyUpgrade('growth'));
-    window.dom.yieldUpgradeBtn.removeEventListener('click', () => buyUpgrade('yield'));
-    window.dom.luckUpgradeBtn.removeEventListener('click', () => buyUpgrade('luck'));
-    window.dom.droneUpgradeBtn.removeEventListener('click', () => buyUpgrade('drone'));
-    window.dom.storageUpgradeBtn.removeEventListener('click', () => buyUpgrade('storage'));
-    window.dom.autoDeployBtn.removeEventListener('click', buyAutoDeploy);
-    window.dom.researchPlotBtn.removeEventListener('click', () => buyResearch('plots'));
-    window.dom.deepUpgradeBtn.removeEventListener('click', () => buyResearch('deep'));
-    window.dom.tradeUpgradeBtn.removeEventListener('click', () => buyResearch('trade'));
-    window.dom.exchangeBtn.removeEventListener('click', () => exchangeCP(100));
-    window.dom.exchange1000Btn.removeEventListener('click', () => exchangeCP(1000));
-    window.dom.exchangeMaxBtn.removeEventListener('click', exchangeCPMax);
+    try { window.dom.plantAllBtn.removeEventListener('click', plantAll); } catch(e){}
+    try { window.dom.harvestAllBtn.removeEventListener('click', harvestAll); } catch(e){}
+    try { window.dom.growthUpgradeBtn.removeEventListener('click', () => buyUpgrade('growth')); } catch(e){}
+    try { window.dom.yieldUpgradeBtn.removeEventListener('click', () => buyUpgrade('yield')); } catch(e){}
+    try { window.dom.luckUpgradeBtn.removeEventListener('click', () => buyUpgrade('luck')); } catch(e){}
+    try { window.dom.droneUpgradeBtn.removeEventListener('click', () => buyUpgrade('drone')); } catch(e){}
+    try { window.dom.storageUpgradeBtn.removeEventListener('click', () => buyUpgrade('storage')); } catch(e){}
+    try { window.dom.autoDeployBtn.removeEventListener('click', buyAutoDeploy); } catch(e){}
+    try { window.dom.researchPlotBtn.removeEventListener('click', () => buyResearch('plots')); } catch(e){}
+    try { window.dom.deepUpgradeBtn.removeEventListener('click', () => buyResearch('deep')); } catch(e){}
+    try { window.dom.tradeUpgradeBtn.removeEventListener('click', () => buyResearch('trade')); } catch(e){}
+    try { window.dom.exchangeBtn.removeEventListener('click', () => exchangeCP(100)); } catch(e){}
+    try { window.dom.exchange1000Btn.removeEventListener('click', () => exchangeCP(1000)); } catch(e){}
+    try { window.dom.exchangeMaxBtn.removeEventListener('click', exchangeCPMax); } catch(e){}
 
     // Add listeners
     window.dom.plantAllBtn.addEventListener('click', plantAll);
@@ -490,6 +516,50 @@
     window.dom.exchangeBtn.addEventListener('click', () => exchangeCP(100));
     window.dom.exchange1000Btn.addEventListener('click', () => exchangeCP(1000));
     window.dom.exchangeMaxBtn.addEventListener('click', exchangeCPMax);
+
+    // Notification toggles listeners
+    if(window.dom.notifManual) {
+      window.dom.notifManual.checked = !!window.gameState.notificationSettings.manual;
+      window.dom.notifManual.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.manual = !!window.dom.notifManual.checked;
+        saveGame();
+      });
+    }
+    if(window.dom.notifAuto) {
+      window.dom.notifAuto.checked = !!window.gameState.notificationSettings.auto;
+      window.dom.notifAuto.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.auto = !!window.dom.notifAuto.checked;
+        saveGame();
+      });
+    }
+    if(window.dom.notifMarket) {
+      window.dom.notifMarket.checked = !!window.gameState.notificationSettings.market;
+      window.dom.notifMarket.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.market = !!window.dom.notifMarket.checked;
+        saveGame();
+      });
+    }
+    if(window.dom.notifPurchase) {
+      window.dom.notifPurchase.checked = !!window.gameState.notificationSettings.purchase;
+      window.dom.notifPurchase.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.purchase = !!window.dom.notifPurchase.checked;
+        saveGame();
+      });
+    }
+    if(window.dom.notifExchange) {
+      window.dom.notifExchange.checked = !!window.gameState.notificationSettings.exchange;
+      window.dom.notifExchange.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.exchange = !!window.dom.notifExchange.checked;
+        saveGame();
+      });
+    }
+    if(window.dom.notifSystem) {
+      window.dom.notifSystem.checked = !!window.gameState.notificationSettings.system;
+      window.dom.notifSystem.addEventListener('change', ()=>{
+        window.gameState.notificationSettings.system = !!window.dom.notifSystem.checked;
+        saveGame();
+      });
+    }
 
     // Clear existing plots and re-render based on current gameState
     window.dom.farmGrid.innerHTML = '';
@@ -510,7 +580,17 @@
 
 
   // --- Notify helper ---
-  function showNotification(msg, lucky=false){
+  // showNotification now respects user notificationSettings via a 'type' string.
+  // Types: 'manual', 'auto', 'market', 'purchase', 'exchange', 'system'
+  function showNotification(msg, lucky=false, type='manual'){
+    // Ensure defaults exist in case this is called before initializeGame
+    if(!window.gameState) window.gameState = {};
+    if(!window.gameState.notificationSettings){
+      window.gameState.notificationSettings = { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true };
+    }
+    // If user disabled this notification type, skip
+    if(type && window.gameState.notificationSettings && window.gameState.notificationSettings[type] === false) return;
+
     let n=document.createElement('div');
     n.className=`notification ${lucky?'lucky':''}`;
     n.textContent=msg;
@@ -522,89 +602,177 @@
 </script>
 
 <style>
-  /* Base Styles */
-  body{
-    background:#0d0d2b;
-    color:#fff;
-    font-family:'Press Start 2P',monospace; /* Pixel art font */
-    font-size:12px;
-    padding:10px;
-    margin:0;
-    image-rendering: pixelated; /* Ensures pixel art images look crisp */
+  /* 8-bit / Pixel-art Styles */
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  html,body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
   }
-  .game-container{max-width:1000px;margin:0 auto;background:#12123d;border:4px solid #00ffea;padding:10px;box-sizing:border-box;}
-  .btn{background:#0aff9d;color:#000;font-weight:bold;border:2px solid #00ffea;padding:10px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:10px;text-align:center;display:block;width:100%;box-sizing:border-box;margin-bottom:5px;border-radius:5px;}
-  .btn:hover:enabled{background:#06c285;}
-  .btn:disabled{background:#444;color:#888;border-color:#555;cursor:not-allowed;}
 
-  /* Notification Styles */
-  .notification-container{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:none;display:flex;flex-direction:column;gap:5px;}
-  .notification{background:#0aff9d;color:#000;border:2px solid #00ffea;padding:8px 15px;font-size:12px;opacity:0;transition:opacity 0.5s, transform 0.5s;transform:translateY(-20px);border-radius:5px;box-shadow:0 0 10px rgba(0,255,234,0.5);white-space:nowrap;}
-  .notification.show{opacity:1;transform:translateY(0);}
-  .notification.lucky{background:#ff6f00;border-color:#ffaa00;color:#fff;}
+  body{
+    background: linear-gradient(180deg,#07102a 0%, #0b0b1a 100%);
+    color:#00ffea;
+    font-family:'Press Start 2P', monospace;
+    font-size:12px;
+    padding:12px;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  /* Modal Styles */
-  .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;justify-content:center;align-items:center;z-index:1001;}
-  .modal-content{background:#222;padding:20px;border:2px solid #0aff9d;max-width:400px;text-align:center;position:relative;border-radius:10px;box-shadow:0 0 20px rgba(0,255,234,0.8);}
-  .modal-content h2{color:#0aff9d;margin-bottom:10px;font-size:16px;}
-  .modal-content button#closeModalProfile{position:absolute;top:5px;right:5px;background:#ff4444;color:#fff;border:none;padding:4px 8px;cursor:pointer;font-size:14px;border-radius:50%;width:25px;height:25px;display:flex;align-items:center;justify-content:center;}
-  .modal-content input[type="text"]{width:calc(100% - 20px);padding:8px;margin-bottom:10px;border:1px solid #00ffea;background:#0d0d2b;color:#fff;font-family:'Press Start 2P',monospace;font-size:12px;border-radius:3px;}
+  .game-container{
+    max-width:1000px;
+    margin:10px auto;
+    background:#081028;
+    border:6px solid #00ffea;
+    padding:12px;
+    box-sizing:border-box;
+    box-shadow: 0 0 0 4px #002631 inset;
+  }
+
+  /* Buttons: chunky square style */
+  .btn{
+    background:#00ffea;
+    color:#001b18;
+    font-weight:bold;
+    border:3px solid #002631;
+    padding:10px;
+    cursor:pointer;
+    font-family:'Press Start 2P',monospace;
+    font-size:11px;
+    text-align:center;
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+    margin-bottom:6px;
+    border-radius:0; /* square corners for 8-bit look */
+    box-shadow: 4px 4px 0 #001b18;
+    line-height:1.1;
+  }
+  .btn:hover:enabled{ background:#b7fff0; }
+  .btn:disabled{ background:#444;color:#888;border-color:#111;box-shadow:none;cursor:not-allowed; }
+
+  /* Notification Styles: blocky */
+  .notification-container{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:none;display:flex;flex-direction:column;gap:6px;
+  }
+  .notification{
+    background:#00ffea;
+    color:#00231f;
+    border:4px solid #002631;
+    padding:10px 16px;
+    font-size:12px;
+    opacity:0;
+    transform: translateY(-20px);
+    transition: opacity 0.2s linear, transform 0.2s linear;
+    box-shadow: 4px 4px 0 #001b18;
+    white-space:nowrap;
+    border-radius:0;
+  }
+  .notification.show{ opacity:1; transform: translateY(0); }
+  .notification.lucky{ background:#ffb24a; border-color:#7a3f00; color:#100700; }
+
+  /* Modal Styles: blocky */
+  .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:none;justify-content:center;align-items:center;z-index:1001;}
+  .modal-content{background:#001420;padding:20px;border:4px solid #00ffea;max-width:420px;text-align:center;position:relative;border-radius:0;box-shadow:0 0 0 6px rgba(0,255,234,0.08);}
+  .modal-content h2{color:#00ffea;margin-bottom:10px;font-size:14px;}
+  .modal-content button#closeModalProfile{position:absolute;top:6px;right:6px;background:#ff4444;color:#fff;border:none;padding:6px;cursor:pointer;font-size:12px;border-radius:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+  .modal-content input[type="text"]{width:calc(100% - 20px);padding:8px;margin-bottom:10px;border:2px solid #00ffea;background:#061021;color:#fff;font-family:'Press Start 2P',monospace;font-size:12px;border-radius:0;}
 
   /* Game Specific Styles */
-  .header-bar {display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 5px; background: #080820; border-bottom: 1px solid #00ffea;}
-  .status-info {display: flex; gap: 10px;}
-  .status-item {font-size: 10px;}
-  .farm-grid {display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; padding: 10px; border: 2px solid #00ffea; background: #0d0d2b; min-height: 200px; border-radius: 5px;}
-  .plot {position: relative; width: 80px; height: 80px; background: #0a0a20; border: 2px solid #00f6ff; display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; transition: transform 0.1s ease-in-out;border-radius: 5px;}
-  .plot:hover {transform: scale(1.05);}
-  .plot.planted .progress-bar {display: block;}
-  .plot.ready {border-color: #0aff9d;}
-  .plot.empty .crop:before {content: "✨";}
-  .plot.planted .crop:before {content: "⛏️";}
-  .plot.ready .crop:before {content: "💎";}
-  .progress-bar {position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background: rgba(0,0,0,0.5); display: none;border-bottom-left-radius: 3px;border-bottom-right-radius: 3px;}
-  .progress-fill {height: 100%; background: #00f6ff; width: 0%;}
-  .controls {display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;}
-  .section {border: 2px solid #00ffea; padding: 10px; margin-top: 10px;border-radius: 5px;}
-  .section h3 {color: #00f6ff; text-align: center; margin-top: 0; font-size: 14px;}
-  .upgrade-grid, .research-grid, .exchange-grid {display: grid; grid-template-columns: 1fr; gap: 5px;} /* Default to 1 column for smaller screens */
-  @media (min-width: 600px) {
-    .upgrade-grid {grid-template-columns: repeat(2, 1fr);}
-    .research-grid {grid-template-columns: repeat(3, 1fr);}
-    .exchange-grid {grid-template-columns: repeat(3, 1fr);}
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 6px;
+    background: #020616;
+    border-bottom: 3px solid #00ffea;
   }
-  .upgrade-item, .research-item {display: flex; justify-content: space-between; align-items: center; padding: 5px; border: 1px solid #00f6ff; background: #080820;border-radius: 3px;}
-  .crash {color: #ff4444; font-weight: bold;}
-  .boom {color: #0aff9d; font-weight: bold;}
+  .status-info { display:flex; gap: 10px; align-items:center; }
+  .status-item { font-size: 10px; color: #b9fff2; }
+  .farm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    padding: 10px;
+    border: 4px solid #00ffea;
+    background: #02061a;
+    min-height: 200px;
+    border-radius: 0;
+  }
+  .plot {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: #001016;
+    border: 4px solid #00f6ff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 30px;
+    cursor: pointer;
+    transition: transform 0.07s ease-in-out;
+    box-shadow: 4px 4px 0 #001b18;
+    border-radius: 0;
+  }
+  .plot:hover { transform: scale(1.04); }
+  .plot.planted .progress-bar { display: block; }
+  .plot.ready { border-color: #00ffea; background: #002b19; }
+  .plot.empty .crop:before { content: "✨"; }
+  .plot.planted .crop:before { content: "⛏️"; }
+  .plot.ready .crop:before { content: "💎"; }
+  .progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: rgba(0,0,0,0.6); display: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .progress-fill { height: 100%; background: #00f6ff; width: 0%; }
+
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+  .section { border: 4px solid #00ffea; padding: 10px; margin-top: 10px; border-radius: 0; background:#00121f; }
+  .section h3 { color: #00f6ff; text-align: center; margin-top: 0; font-size: 14px; }
+
+  .upgrade-grid, .research-grid, .exchange-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  @media (min-width: 600px) {
+    .upgrade-grid { grid-template-columns: repeat(2, 1fr); }
+    .research-grid { grid-template-columns: repeat(3, 1fr); }
+    .exchange-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  .upgrade-item, .research-item { display:flex; justify-content:space-between; align-items:center; padding:6px; border:2px solid #00f6ff; background:#00121a; border-radius:0; }
+
+  .crash { color: #ff4444; font-weight: bold; }
+  .boom { color: #00ffea; font-weight: bold; }
+
+  /* Notification toggles */
+  .notif-row { display:flex; gap:8px; align-items:center; padding:6px; }
+  .notif-row input[type="checkbox"]{ width:18px; height:18px; transform:scale(1.0); }
 
   /* Authentication Specific Styles */
   #authContainer {
-    max-width: 400px;
+    max-width: 420px;
     margin: 50px auto;
     padding: 20px;
-    background: #12123d;
-    border: 4px solid #00ffea;
+    background: #001226;
+    border: 6px solid #00ffea;
     text-align: center;
-    border-radius: 10px;
+    border-radius: 0;
   }
   #authContainer input {
     width: calc(100% - 20px);
     padding: 10px;
     margin-bottom: 10px;
-    border: 1px solid #00f6ff;
-    background: #0d0d2b;
-    color: #fff;
+    border: 2px solid #00f6ff;
+    background: #021126;
+    color: #bffef1;
     font-family: 'Press Start 2P', monospace;
     font-size: 12px;
-    border-radius: 3px;
+    border-radius: 0;
   }
-  #authContainer .btn {
-    margin-top: 10px;
-  }
-  #authContainer p {
-    margin-top: 15px;
-    font-size: 10px;
-  }
+  #authContainer .btn { margin-top: 10px; }
+  #authContainer p { margin-top: 15px; font-size: 10px; color:#9ff7ef; }
+
+  /* Small tweaks */
+  .status p { margin: 6px 0; color:#bffef1; font-size:12px; }
+  .status { margin-bottom: 8px; }
 
 </style>
 </head>
@@ -641,7 +809,7 @@
   <div class="status">
     <p>Crystals: <span id="applePoints">0</span> | Gold: <span id="gold">0</span> cr</p>
     <p>Day: <span id="seasonDay">1</span> (<span id="seasonTimer"></span>)</p>
-    <p>Market Rate: <span id="exchangeRate">0.50</span> cr/CP <span id="crashTimer"></span></p>
+    <p id="marketStatus"><span id="crashTimer"></span></p>
   </div>
 
   <div class="farm-grid" id="farmGrid">
@@ -676,11 +844,25 @@
   </div>
 
   <div class="section">
+    <h3>🔔 Notifications</h3>
+    <div class="exchange-grid" style="grid-template-columns: repeat(2,1fr);">
+      <label class="notif-row"><input type="checkbox" id="notifManual"> Manual Actions</label>
+      <label class="notif-row"><input type="checkbox" id="notifAuto"> Auto Farming</label>
+      <label class="notif-row"><input type="checkbox" id="notifMarket"> Market Events</label>
+      <label class="notif-row"><input type="checkbox" id="notifPurchase"> Purchases/Upgrades</label>
+      <label class="notif-row"><input type="checkbox" id="notifExchange"> Exchanges</label>
+      <label class="notif-row"><input type="checkbox" id="notifSystem"> System</label>
+    </div>
+    <div style="color:#bffef1; margin-top:6px; font-size:11px;">Tip: Auto Farming notifications default to OFF to avoid spam.</div>
+  </div>
+
+  <div class="section">
     <h3>💰 Market Exchange</h3>
     <div class="exchange-grid">
       <button class="btn" id="exchangeBtn">Exchange 100 CP</button>
       <button class="btn" id="exchange1000Btn">Exchange 1000 CP</button>
       <button class="btn" id="exchangeMaxBtn">Exchange All CP</button>
+      <div style="grid-column: 1 / -1; text-align:center; margin-top:6px; color:#bffef1;">Rate: <span id="exchangeRate">0.50</span> cr/CP</div>
     </div>
   </div>
 </div>
