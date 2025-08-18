@@ -72,7 +72,7 @@
   function startAutoSave() {
     if (!autoSaveIntervalId) {
       autoSaveIntervalId = setInterval(saveGame, AUTO_SAVE_INTERVAL);
-      console.log("Auto-save started (every 10s)");
+      console.log("Auto-saved!"); // Keeping console log for debug, removed user notification
     }
   }
   function stopAutoSave() {
@@ -459,7 +459,8 @@
     };
 
     // Set up event listeners for newly rendered elements (plots) or re-bind if game loaded
-    window.dom.plantAllBtn.removeEventListener('click', plantAll); // Prevent multiple listeners
+    // Remove listeners first to prevent duplicates on game load
+    window.dom.plantAllBtn.removeEventListener('click', plantAll);
     window.dom.harvestAllBtn.removeEventListener('click', harvestAll);
     window.dom.growthUpgradeBtn.removeEventListener('click', () => buyUpgrade('growth'));
     window.dom.yieldUpgradeBtn.removeEventListener('click', () => buyUpgrade('yield'));
@@ -474,6 +475,7 @@
     window.dom.exchange1000Btn.removeEventListener('click', () => exchangeCP(1000));
     window.dom.exchangeMaxBtn.removeEventListener('click', exchangeCPMax);
 
+    // Add listeners
     window.dom.plantAllBtn.addEventListener('click', plantAll);
     window.dom.harvestAllBtn.addEventListener('click', harvestAll);
     window.dom.growthUpgradeBtn.addEventListener('click', () => buyUpgrade('growth'));
@@ -521,7 +523,15 @@
 
 <style>
   /* Base Styles */
-  body{background:#0d0d2b;color:#fff;font-family:'Press Start 2P',monospace;font-size:12px;padding:10px;margin:0;}
+  body{
+    background:#0d0d2b;
+    color:#fff;
+    font-family:'Press Start 2P',monospace; /* Pixel art font */
+    font-size:12px;
+    padding:10px;
+    margin:0;
+    image-rendering: pixelated; /* Ensures pixel art images look crisp */
+  }
   .game-container{max-width:1000px;margin:0 auto;background:#12123d;border:4px solid #00ffea;padding:10px;box-sizing:border-box;}
   .btn{background:#0aff9d;color:#000;font-weight:bold;border:2px solid #00ffea;padding:10px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:10px;text-align:center;display:block;width:100%;box-sizing:border-box;margin-bottom:5px;border-radius:5px;}
   .btn:hover:enabled{background:#06c285;}
