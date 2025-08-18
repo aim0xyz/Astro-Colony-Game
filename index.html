@@ -64,13 +64,12 @@
 
 <div class="game-container" id="gameContainer">
   <!-- Title above auth / profile area -->
-  <div class="title">🌌 Astro Colony</div>
+  <div class="title">Astro Colony</div>
 
   <div class="top-controls">
     <div class="auth-area">
-      <div id="authContainer" style="display:none;">
-        <!-- Login / Register forms toggled by script -->
-        <form id="loginForm" style="display:inline-block;">
+      <div id="authContainer">
+        <form id="loginForm">
           <input id="loginEmail" type="email" placeholder="Email" required style="padding:6px;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;margin-right:6px;">
           <input id="loginPassword" type="password" placeholder="Password" required style="padding:6px;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;margin-right:6px;">
           <button class="btn" type="submit" style="padding:8px 10px;">Login</button>
@@ -79,12 +78,13 @@
           <button id="showRegister" class="btn" style="padding:8px 10px;margin-left:6px;">Register</button>
         </div>
       </div>
+      <!-- Register inputs will be added inline here -->
     </div>
 
     <div style="display:flex;gap:8px;align-items:center;">
       <div id="userStatus" style="color:#bffef1;">Not logged in</div>
-      <button id="profileBtn" class="btn" style="display:none;">👤 Profile</button>
-      <button id="logoutBtn" class="btn" style="display:none;">🚪 Logout</button>
+      <button id="profileBtn" class="btn" style="display:none;">Profile</button>
+      <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
     </div>
   </div>
 
@@ -99,61 +99,61 @@
   </div>
 
   <div class="controls">
-    <button class="btn" id="plantAllBtn">🚀 Deploy All Drones (<span id="plantCost">0</span> cr)</button>
-    <button class="btn" id="harvestAllBtn">💎 Collect All Crystals</button>
+    <button class="btn" id="plantAllBtn">Deploy All Drones (<span id="plantCost">0</span> cr)</button>
+    <button class="btn" id="harvestAllBtn">Collect All Crystals</button>
   </div>
 
   <div class="farm-grid" id="farmGrid"></div>
 
   <!-- Upgrades -->
   <div class="upgrades">
-    <h3>⚙️ Drone & Mining Upgrades</h3>
+    <h3>Drone & Mining Upgrades</h3>
     <div class="upgrade-item">
       <span class="upgrade-text">⚡ Faster Mining (Lv <span id="growthLevel">1</span>) <button class="info-btn" data-info="growth">?</button></span>
       <button class="btn" id="growthUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">🌟 High-Yield Extractors (Lv <span id="yieldLevel">1</span>) <button class="info-btn" data-info="yield">?</button></span>
+      <span class="upgrade-text">High-Yield Extractors (Lv <span id="yieldLevel">1</span>) <button class="info-btn" data-info="yield">?</button></span>
       <button class="btn" id="yieldUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">🍀 Cosmic Luck (Lv <span id="luckLevel">1</span>) <button class="info-btn" data-info="luck">?</button></span>
+      <span class="upgrade-text">Cosmic Luck (Lv <span id="luckLevel">1</span>) <button class="info-btn" data-info="luck">?</button></span>
       <button class="btn" id="luckUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">🛰️ Drone Fleet Capacity (Lv <span id="droneLevel">1</span>) <button class="info-btn" data-info="drone">?</button></span>
+      <span class="upgrade-text">Drone Fleet Capacity (Lv <span id="droneLevel">1</span>) <button class="info-btn" data-info="drone">?</button></span>
       <button class="btn" id="droneUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">📦 Quantum Storage (Lv <span id="storageLevel">1</span>) <button class="info-btn" data-info="storage">?</button></span>
+      <span class="upgrade-text">Quantum Storage (Lv <span id="storageLevel">1</span>) <button class="info-btn" data-info="storage">?</button></span>
       <button class="btn" id="storageUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">🤖 Autonomous Drone AI (Permanent) <button class="info-btn" data-info="autodeploy">?</button></span>
+      <span class="upgrade-text">Autonomous Drone AI (Permanent) <button class="info-btn" data-info="autodeploy">?</button></span>
       <button class="btn" id="autoDeployBtn">Buy (5000 cr)</button>
     </div>
   </div>
 
   <!-- Research -->
   <div class="upgrades">
-    <h3>🔬 Research Lab</h3>
+    <h3>Research Lab</h3>
     <div class="upgrade-item">
-      <span class="upgrade-text">🪐 Terraform Expansion (Plots <span id="researchPlots">0</span>) <button class="info-btn" data-info="plots">?</button></span>
+      <span class="upgrade-text">Terraform Expansion (Plots <span id="researchPlots">0</span>) <button class="info-btn" data-info="plots">?</button></span>
       <button class="btn" id="researchPlotBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">🔥 Deep Core Drilling (Lv <span id="deepLevel">0</span>) <button class="info-btn" data-info="deep">?</button></span>
+      <span class="upgrade-text">Deep Core Drilling (Lv <span id="deepLevel">0</span>) <button class="info-btn" data-info="deep">?</button></span>
       <button class="btn" id="deepUpgradeBtn"></button>
     </div>
     <div class="upgrade-item">
-      <span class="upgrade-text">👽 Xeno Trade Pact (Lv <span id="tradeLevel">0</span>) <button class="info-btn" data-info="trade">?</button></span>
+      <span class="upgrade-text">Xeno Trade Pact (Lv <span id="tradeLevel">0</span>) <button class="info-btn" data-info="trade">?</button></span>
       <button class="btn" id="tradeUpgradeBtn"></button>
     </div>
   </div>
 
   <!-- Exchange -->
   <div class="exchange">
-    <h3>🏦 Galactic Exchange</h3>
+    <h3>Galactic Exchange</h3>
     <p>Swap 100 Crystal Points → <span id="exchangeRate">30</span> Credits <button class="info-btn" data-info="exchange">?</button></p>
     <div id="crashTimer"></div>
     <div class="exchange-buttons">
@@ -177,10 +177,10 @@
 <!-- Profile modal (contains notification toggles and change password) -->
 <div class="modal" id="profileModal"><div class="modal-content">
   <button class="close-modal" id="closeProfile">✖</button>
-  <h2>👤 Profile</h2>
+  <h2>Profile</h2>
   <p><strong>Email:</strong> <span id="profileEmailDisplay"></span></p>
 
-  <div class="profile-grid" style="margin-top:8px;">
+  <div class="profile-grid">
     <div>
       <label for="usernameInput">Username</label>
       <input id="usernameInput" type="text" placeholder="Enter username">
@@ -188,7 +188,7 @@
     </div>
     <div>
       <label>Notifications</label>
-      <div class="notif-grid" style="margin-top:6px;">
+      <div class="notif-grid">
         <label><input type="checkbox" id="notifManual"> Manual</label>
         <label><input type="checkbox" id="notifAuto"> Auto Farming</label>
         <label><input type="checkbox" id="notifMarket"> Market</label>
@@ -196,17 +196,17 @@
         <label><input type="checkbox" id="notifExchange"> Exchanges</label>
         <label><input type="checkbox" id="notifSystem"> System</label>
       </div>
-      <div class="muted" style="margin-top:8px;">Tip: Auto Farming notifications default to OFF to avoid spam.</div>
+      <div class="muted">Tip: Auto Farming notifications default to OFF to avoid spam.</div>
     </div>
   </div>
 
   <hr style="border:1px dashed #003233;margin:12px 0;">
 
-  <h3 style="color:#0aff9d;margin:6px 0 8px 0;">🔒 Change Password</h3>
+  <h3 style="color:#0aff9d;margin:6px 0 8px 0;">Change Password</h3>
   <label style="display:block;text-align:left;margin-top:6px;">Current password</label>
-  <input id="currentPassword" type="password" placeholder="Current password" style="padding:8px;width:100%;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;">
+  <input id="currentPassword" type="password" placeholder="Current password">
   <label style="display:block;text-align:left;margin-top:8px;">New password</label>
-  <input id="newPassword" type="password" placeholder="New password" style="padding:8px;width:100%;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;">
+  <input id="newPassword" type="password" placeholder="New password">
   <div style="margin-top:10px;"><button class="btn" id="changePasswordBtn">Change Password</button></div>
 </div></div>
 
@@ -263,7 +263,7 @@
       },
       research:{plots:0,plotsCost:2000,deep:0,deepCost:3000,trade:0,tradeCost:5000},
       seasonDay:1,
-      seasonEndTime:Date.now()+30*1000,
+      seasonEndTime:Date.now()+30*1000, // 30 seconds for testing season end
       lastDayTick:Date.now(),
       marketCrashUntil:0,
       boomUntil:0,
@@ -276,10 +276,7 @@
     gameContainer: document.getElementById('gameContainer'),
     authContainer: document.getElementById('authContainer'),
     loginForm: document.getElementById('loginForm'),
-    registerForm: null, // created later if needed
-    loginEmail: document.getElementById('loginEmail'),
-    loginPassword: document.getElementById('loginPassword'),
-    showRegisterBtn: document.getElementById('showRegister'),
+    authLinks: document.getElementById('authLinks'),
     userStatus: document.getElementById('userStatus'),
     profileBtn: document.getElementById('profileBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
@@ -354,18 +351,15 @@
     notifSystem: document.getElementById('notifSystem'),
   };
 
-  // register form is optional UI — create light registration modal inline (small)
-  // We'll show register inputs inline below the login area when "Register" is clicked.
-  const authLinks = document.getElementById('authLinks');
-  const registerInline = document.createElement('div');
-  registerInline.style.display = 'none';
-  registerInline.innerHTML = `
-    <input id="registerEmail" type="email" placeholder="Email" style="padding:6px;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;margin-right:6px;">
+  // --- Inline register form elements ---
+  const registerFormDiv = document.createElement('div');
+  registerFormDiv.innerHTML = `
+    <input id="registerEmail" type="email" placeholder="Email" required style="padding:6px;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;margin-right:6px;">
     <input id="registerPassword" type="password" placeholder="Password" style="padding:6px;border-radius:4px;border:1px solid #00f6ff;background:#061021;color:#fff;margin-right:6px;">
-    <button id="registerSubmit" class="btn">Create</button>
-    <button id="showLogin" class="btn" style="margin-left:6px;background:#00f6ff;">Cancel</button>
+    <button id="registerSubmit" class="btn" style="padding:8px 10px;">Create</button>
+    <button id="showLogin" class="btn" style="margin-left:6px;background:#00f6ff;padding:8px 10px;">Cancel</button>
   `;
-  authLinks.appendChild(registerInline);
+  dom.authLinks.appendChild(registerFormDiv);
 
   // --- Info descriptions ---
   const infoData = {
@@ -385,7 +379,6 @@
   function showNotification(msg, lucky=false, type='manual'){
     if(!window.gameState) return;
     const settings = window.gameState.notificationSettings || {manual:true,auto:false,market:true,purchase:true,exchange:true,system:true};
-    // If type is not defined in settings, default to allow
     if(type && settings[type] === false) return;
     const n = document.createElement('div');
     n.className = 'notification' + (lucky ? ' lucky' : '');
@@ -396,11 +389,7 @@
     setTimeout(()=> n.remove(), 3500);
   }
 
-  // --- Simple helpers ---
-  function plantCostPer(){ return Math.max(10 - window.gameState.upgrades.drone.level, 2); }
-  function calcRate(){ let r = 30 + window.gameState.research.trade * 10; if(Date.now() < window.gameState.marketCrashUntil) r = Math.max(5, r - 10); if(Date.now() < window.gameState.boomUntil) r += 20; return r; }
-
-  // --- Core mechanics (adapted from earlier) ---
+  // --- Core mechanics ---
   function plantSeed(p){
     const cost = plantCostPer();
     if(!p || p.state !== 'empty' || window.gameState.gold < cost) return 0;
@@ -660,30 +649,28 @@
     }
   }
 
-  // --- Game loop & events ---
+  // --- Random Events ---
   function randomEvent(){
     const r = Math.random();
-    if(r < 0.1){
-      // meteor destroys a planted plot if any
+    if(r < 0.1){ // Meteor strike
       const p = window.gameState.plots.find(p=>p.state==='planted');
-      if(p){ p.state = 'empty'; showNotification("☄️ Meteor destroyed a drone!"); }
-    } else if(r < 0.35){
+      if(p){
+        p.state = 'empty';
+        showNotification("☄️ Meteor strike! A drone was lost.", false, 'system');
+      }
+    } else if(r < 0.35){ // Trader gift
       const g = 200 + Math.floor(Math.random()*200);
       window.gameState.gold += g;
-      showNotification(`👽 Trader gifted +${g} credits!`, true, 'system');
-    } else if(r < 0.6){
+      showNotification(`👽 Space Trader gifted +${g} credits!`, true, 'system');
+    } else if(r < 0.6){ // Comet delivery
       const cp = 150 + Math.floor(Math.random()*150);
       window.gameState.applePoints += cp;
-      showNotification(`🌌 Comet delivered +${cp} CP!`, true, 'system');
-    } else if(r < 0.8){
-      window.gameState.marketCrashUntil = Date.now() + 15 * 1000;
-      showNotification("💥 Market Crash! - rate reduced!", false, 'market');
-    } else {
-      window.gameState.boomUntil = Date.now() + 15 * 1000;
-      showNotification("🚀 Galactic Boom! rate increased!", true, 'market');
+      showNotification(`🌌 Comet arrived with +${cp} CP!`, true, 'system');
     }
+    // Market events (crash/boom) are handled directly in updateGameTick for simplicity with timing
   }
 
+  // --- Game loop tick ---
   function updateGameTick(){
     updatePlots();
     updateUI();
@@ -692,7 +679,11 @@
       window.gameState.seasonDay++;
       window.gameState.seasonEndTime = Date.now() + 30 * 1000; // short for testing
       showNotification(`Day ${window.gameState.seasonDay}!`, true, 'system');
-      // random market events
+
+      // Execute random events
+      randomEvent();
+
+      // Market events (crash/boom)
       const rand = Math.random();
       if(rand < 0.1){ window.gameState.marketCrashUntil = Date.now() + 15*1000; showNotification("Market Crash!", false, 'market');}
       else if(rand < 0.2){ window.gameState.boomUntil = Date.now() + 15*1000; showNotification("Market Boom!", true, 'market');}
@@ -702,7 +693,7 @@
   let gameInterval;
   function startGameLoop(){
     if(gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(updateGameTick, 1000);
+    gameInterval = setInterval(updateGameTick, 1000); // Tick every second
   }
 
   // --- Persistence (Firestore) ---
@@ -720,9 +711,9 @@
       const snap = await getDoc(doc(db, "gamestates", uid));
       if(snap.exists()){
         window.gameState = snap.data();
-        // ensure defaults for missing keys (compatibility)
-        if(!window.gameState.notificationSettings) window.gameState.notificationSettings = {manual:true,auto:false,market:true,purchase:true,exchange:true,system:true};
-        if(!window.gameState.plots) window.gameState.plots = [];
+        // Ensure compatibility with older save states by filling in missing keys
+        const defaults = defaultState();
+        window.gameState = { ...defaults, ...window.gameState }; // Merge new defaults over loaded data
         initializeUIAfterLoad();
         showNotification("Game loaded!", true, 'system');
         return;
@@ -783,36 +774,64 @@
 
   // --- UI Initialization & event wiring ---
   function initializeGame(loaded){
-    if(!loaded){
-      window.gameState = defaultState();
+    window.gameState = loaded ? window.gameState : defaultState();
+    if(!loaded){ // Ensure plots are initialized for new games
       for(let i=0;i<window.gameState.plotsOwned;i++) window.gameState.plots.push({id:i,state:'empty'});
     }
     initializeUIAfterLoad();
   }
 
   function initializeUIAfterLoad(){
-    // render farm
     renderFarm();
     updateUI();
 
-    // attach listeners for main buttons
+    // Auth UI wiring
+    document.getElementById('showRegister').addEventListener('click', ()=>{
+      registerFormDiv.style.display = 'inline-block';
+      dom.loginForm.style.display = 'none';
+      dom.authLinks.querySelector('#showRegister').style.display = 'none';
+    });
+    registerFormDiv.querySelector('#showLogin').addEventListener('click', ()=>{
+      registerFormDiv.style.display = 'none';
+      dom.loginForm.style.display = 'inline-block';
+      dom.authLinks.querySelector('#showRegister').style.display = 'inline-block';
+    });
+    registerFormDiv.querySelector('#registerSubmit').addEventListener('click', ()=>{
+      const email = registerFormDiv.querySelector('#registerEmail').value;
+      const pw = registerFormDiv.querySelector('#registerPassword').value;
+      if(email && pw) registerUser(email, pw);
+    });
+    dom.loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const email = dom.loginEmail.value;
+      const pw = dom.loginPassword.value;
+      if(email && pw) loginUser(email, pw);
+    });
+    dom.logoutBtn.addEventListener('click', ()=> logoutUser());
+    dom.profileBtn.addEventListener('click', openProfileModal);
+
+    // Profile modal actions
+    dom.saveUsernameBtn.addEventListener('click', saveUsername);
+    dom.changePasswordBtn.addEventListener('click', changePassword);
+
+    // Main game buttons
     dom.plantAllBtn.onclick = ()=> { plantAll(); };
     dom.harvestAllBtn.onclick = ()=> { harvestAll(); };
 
-    dom.growthUpgradeBtn.onclick = ()=> { buyUpgrade('growth'); updateUI(); };
-    dom.yieldUpgradeBtn.onclick = ()=> { buyUpgrade('yield'); updateUI(); };
-    dom.luckUpgradeBtn.onclick = ()=> { buyUpgrade('luck'); updateUI(); };
-    dom.droneUpgradeBtn.onclick = ()=> { buyUpgrade('drone'); updateUI(); };
-    dom.storageUpgradeBtn.onclick = ()=> { buyUpgrade('storage'); updateUI(); };
-    dom.autoDeployBtn.onclick = ()=> { buyAutoDeploy(); updateUI(); };
+    dom.growthUpgradeBtn.onclick = ()=> { buyUpgrade('growth'); };
+    dom.yieldUpgradeBtn.onclick = ()=> { buyUpgrade('yield'); };
+    dom.luckUpgradeBtn.onclick = ()=> { buyUpgrade('luck'); };
+    dom.droneUpgradeBtn.onclick = ()=> { buyUpgrade('drone'); };
+    dom.storageUpgradeBtn.onclick = ()=> { buyUpgrade('storage'); };
+    dom.autoDeployBtn.onclick = ()=> { buyAutoDeploy(); };
 
     dom.researchPlotBtn.onclick = ()=> { researchPlots(); };
-    dom.deepUpgradeBtn.onclick = ()=> { researchDeep(); updateUI(); };
-    dom.tradeUpgradeBtn.onclick = ()=> { researchTrade(); updateUI(); };
+    dom.deepUpgradeBtn.onclick = ()=> { researchDeep(); };
+    dom.tradeUpgradeBtn.onclick = ()=> { researchTrade(); };
 
-    dom.exchangeBtn.onclick = ()=> { exchangeCP100(); updateUI(); };
-    dom.exchange1000Btn.onclick = ()=> { exchangeCP1000(); updateUI(); };
-    dom.exchangeMaxBtn.onclick = ()=> { exchangeCPMax(); updateUI(); };
+    dom.exchangeBtn.onclick = ()=> { exchangeCP100(); };
+    dom.exchange1000Btn.onclick = ()=> { exchangeCP1000(); };
+    dom.exchangeMaxBtn.onclick = ()=> { exchangeCPMax(); };
 
     // info buttons
     document.querySelectorAll('.info-btn').forEach(b=>{
@@ -824,89 +843,48 @@
         dom.infoModal.style.display = 'flex';
       });
     });
-
     dom.closeInfo.addEventListener('click', ()=> dom.infoModal.style.display = 'none');
     dom.infoModal.addEventListener('click', (e)=> { if(e.target === dom.infoModal) dom.infoModal.style.display = 'none'; });
 
-    // profile modal
-    dom.profileBtn.addEventListener('click', openProfileModal);
-    dom.closeProfile.addEventListener('click', ()=> dom.profileModal.style.display = 'none');
-    dom.profileModal.addEventListener('click', (e)=> { if(e.target === dom.profileModal) dom.profileModal.style.display = 'none'; });
-
-    // profile actions
-    dom.saveUsernameBtn.addEventListener('click', saveUsername);
-    dom.changePasswordBtn.addEventListener('click', changePassword);
-
     // notification toggles
-    if(dom.notifManual){ dom.notifManual.checked = !!window.gameState.notificationSettings.manual; dom.notifManual.addEventListener('change', ()=>{ window.gameState.notificationSettings.manual = dom.notifManual.checked; if(auth.currentUser) saveGame(); }); }
-    if(dom.notifAuto){ dom.notifAuto.checked = !!window.gameState.notificationSettings.auto; dom.notifAuto.addEventListener('change', ()=>{ window.gameState.notificationSettings.auto = dom.notifAuto.checked; if(auth.currentUser) saveGame(); }); }
-    if(dom.notifMarket){ dom.notifMarket.checked = !!window.gameState.notificationSettings.market; dom.notifMarket.addEventListener('change', ()=>{ window.gameState.notificationSettings.market = dom.notifMarket.checked; if(auth.currentUser) saveGame(); }); }
-    if(dom.notifPurchase){ dom.notifPurchase.checked = !!window.gameState.notificationSettings.purchase; dom.notifPurchase.addEventListener('change', ()=>{ window.gameState.notificationSettings.purchase = dom.notifPurchase.checked; if(auth.currentUser) saveGame(); }); }
-    if(dom.notifExchange){ dom.notifExchange.checked = !!window.gameState.notificationSettings.exchange; dom.notifExchange.addEventListener('change', ()=>{ window.gameState.notificationSettings.exchange = dom.notifExchange.checked; if(auth.currentUser) saveGame(); }); }
-    if(dom.notifSystem){ dom.notifSystem.checked = !!window.gameState.notificationSettings.system; dom.notifSystem.addEventListener('change', ()=>{ window.gameState.notificationSettings.system = dom.notifSystem.checked; if(auth.currentUser) saveGame(); }); }
+    if(dom.notifManual) dom.notifManual.addEventListener('change', ()=>{ window.gameState.notificationSettings.manual = dom.notifManual.checked; if(auth.currentUser) saveGame(); });
+    if(dom.notifAuto) dom.notifAuto.addEventListener('change', ()=>{ window.gameState.notificationSettings.auto = dom.notifAuto.checked; if(auth.currentUser) saveGame(); });
+    if(dom.notifMarket) dom.notifMarket.addEventListener('change', ()=>{ window.gameState.notificationSettings.market = dom.notifMarket.checked; if(auth.currentUser) saveGame(); });
+    if(dom.notifPurchase) dom.notifPurchase.addEventListener('change', ()=>{ window.gameState.notificationSettings.purchase = dom.notifPurchase.checked; if(auth.currentUser) saveGame(); });
+    if(dom.notifExchange) dom.notifExchange.addEventListener('change', ()=>{ window.gameState.notificationSettings.exchange = dom.notifExchange.checked; if(auth.currentUser) saveGame(); });
+    if(dom.notifSystem) dom.notifSystem.addEventListener('change', ()=>{ window.gameState.notificationSettings.system = dom.notifSystem.checked; if(auth.currentUser) saveGame(); });
 
-    // Start loop
+    // Start game loop
     startGameLoop();
   }
 
-  // --- Auth UI wiring (inline register controls) ---
-  // show register inline
-  document.getElementById('showRegister').addEventListener('click', ()=>{
-    registerInline.style.display = 'inline-block';
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('showRegister').style.display = 'none';
-  });
-  registerInline.querySelector('#showLogin').addEventListener('click', ()=>{
-    registerInline.style.display = 'none';
-    document.getElementById('loginForm').style.display = 'inline-block';
-    document.getElementById('showRegister').style.display = 'inline-block';
-  });
-  registerInline.querySelector('#registerSubmit').addEventListener('click', ()=>{
-    const email = registerInline.querySelector('#registerEmail').value;
-    const pw = registerInline.querySelector('#registerPassword').value;
-    if(email && pw) registerUser(email, pw);
-  });
-
-  // login form submit
-  document.getElementById('loginForm').addEventListener('submit', (e)=>{
-    e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
-    const pw = document.getElementById('loginPassword').value;
-    if(email && pw) loginUser(email, pw);
-  });
-
-  // logout
-  dom.logoutBtn.addEventListener('click', ()=> logoutUser());
-
-  // auth state change
+  // --- Auth state listener ---
   onAuthStateChanged(auth, (user)=>{
     if(user){
       dom.userStatus.textContent = `Logged in as: ${user.displayName || user.email}`;
       dom.profileBtn.style.display = 'inline-block';
       dom.logoutBtn.style.display = 'inline-block';
       dom.authContainer.style.display = 'none';
-      // load saved game if exists
       loadGame(user.uid);
-      // start auto-save every 10s
       if(window.autoSaveInterval) clearInterval(window.autoSaveInterval);
       window.autoSaveInterval = setInterval(()=> saveGame(), 10000);
     } else {
       dom.userStatus.textContent = 'Not logged in';
       dom.profileBtn.style.display = 'none';
       dom.logoutBtn.style.display = 'none';
-      dom.authContainer.style.display = 'block';
-      // initialize a fresh local game
+      dom.authContainer.style.display = 'block'; // Show login/register UI
+      // re-initialize game state for guest session
       initializeGame(false);
       if(window.autoSaveInterval){ clearInterval(window.autoSaveInterval); window.autoSaveInterval = null; }
     }
   });
 
-  // open profile modal and populate fields
+  // --- Profile modal handler ---
   function openProfileModal(){
     const user = auth.currentUser;
     dom.profileEmailDisplay.textContent = user ? user.email : 'Guest';
     dom.usernameInput.value = user ? (user.displayName || '') : '';
-    // set toggles
+    // update toggles from current gameState
     if(window.gameState && window.gameState.notificationSettings){
       dom.notifManual.checked = !!window.gameState.notificationSettings.manual;
       dom.notifAuto.checked = !!window.gameState.notificationSettings.auto;
@@ -918,13 +896,10 @@
     dom.profileModal.style.display = 'flex';
   }
 
-  // --- small helpers on load ---
-  // populate initial state and UI
+  // --- Initial load ---
   window.addEventListener('load', ()=>{
-    // start with defaults for guests
-    initializeGame(false);
+    initializeGame(false); // start with default state
     showNotification("🚀 Welcome Commander!", true, 'system');
-    // Wire info modal click-away already done in initializeUIAfterLoad after loadGame/initializeGame
   });
 </script>
 </body>
