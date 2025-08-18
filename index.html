@@ -284,21 +284,22 @@
     }
     
     // Re-assign dom elements to window.dom as they might be called before all are set
-    window.dom = {
-        gameContainer:document.getElementById('gameContainer'),farmGrid:document.getElementById('farmGrid'),applePoints:document.getElementById('applePoints'),gold:document.getElementById('gold'),
-        plantCost:document.getElementById('plantCost'),seasonDay:document.getElementById('seasonDay'),seasonTimer:document.getElementById('seasonTimer'),
-        growthLevel:document.getElementById('growthLevel'),growthUpgradeBtn:document.getElementById('growthUpgradeBtn'),
-        yieldLevel:document.getElementById('yieldLevel'),yieldUpgradeBtn:document.getElementById('yieldUpgradeBtn'),
-        luckLevel:document.getElementById('luckLevel'),luckUpgradeBtn:document.getElementById('luckUpgradeBtn'),
-        droneLevel:document.getElementById('droneLevel'),droneUpgradeBtn:document.getElementById('droneUpgradeBtn'),
-        storageLevel:document.getElementById('storageLevel'),storageUpgradeBtn:document.getElementById('storageUpgradeBtn'),
-        autoDeployBtn:document.getElementById('autoDeployBtn'),
-        researchPlots:document.getElementById('researchPlots'),researchPlotBtn:document.getElementById('researchPlotBtn'),
-        deepLevel:document.getElementById('deepLevel'),deepUpgradeBtn:document.getElementById('deepUpgradeBtn'),
-        tradeLevel:document.getElementById('tradeLevel'),tradeUpgradeBtn:document.getElementById('tradeUpgradeBtn'),
-        exchangeRate:document.getElementById('exchangeRate'),exchangeBtn:document.getElementById('exchangeBtn'),exchange1000Btn:document.getElementById('exchange1000Btn'),exchangeMaxBtn:document.getElementById('exchangeMaxBtn'),
-        plantAllBtn:document.getElementById('plantAllBtn'),harvestAllBtn:document.getElementById('harvestAllBtn'),crashTimer:document.getElementById('crashTimer')
-    };
+window.dom = {
+    gameContainer:document.getElementById('gameContainer'),farmGrid:document.getElementById('farmGrid'),applePoints:document.getElementById('applePoints'),gold:document.getElementById('gold'),
+    plantCost:document.getElementById('plantCost'),seasonDay:document.getElementById('seasonDay'),seasonTimer:document.getElementById('seasonTimer'),
+    growthLevel:document.getElementById('growthLevel'),growthUpgradeBtn:document.getElementById('growthUpgradeBtn'),
+    yieldLevel:document.getElementById('yieldLevel'),yieldUpgradeBtn:document.getElementById('yieldUpgradeBtn'),
+    luckLevel:document.getElementById('luckLevel'),luckUpgradeBtn:document.getElementById('luckUpgradeBtn'),
+    droneLevel:document.getElementById('droneLevel'),droneUpgradeBtn:document.getElementById('droneUpgradeBtn'),
+    storageLevel:document.getElementById('storageLevel'),storageUpgradeBtn:document.getElementById('storageUpgradeBtn'),
+    autoDeployBtn:document.getElementById('autoDeployBtn'),
+    researchPlots:document.getElementById('researchPlots'),researchPlotBtn:document.getElementById('researchPlotBtn'),
+    deepLevel:document.getElementById('deepLevel'),deepUpgradeBtn:document.getElementById('deepUpgradeBtn'),
+    tradeLevel:document.getElementById('tradeLevel'),tradeUpgradeBtn:document.getElementById('tradeUpgradeBtn'),
+    exchangeRate:document.getElementById('exchangeRate'),exchangeBtn:document.getElementById('exchangeBtn'),exchange1000Btn:document.getElementById('exchange1000Btn'),exchangeMaxBtn:document.getElementById('exchangeMaxBtn'),
+    plantAllBtn:document.getElementById('plantAllBtn'),harvestAllBtn:document.getElementById('harvestAllBtn'),crashTimer:document.getElementById('crashTimer'),
+    gameActionButtons:document.getElementById('gameActionButtons') // <--- ADD THIS LINE
+};
     
     // Re-attach all game event listeners
     window.dom.plantAllBtn.onclick = () => { plantAll(); updateUI(); renderFarm(); };
@@ -473,7 +474,7 @@
     <div class="stat"><div class="stat-label">Crystal Points</div><div class="stat-value" id="applePoints">0</div></div>
     <div class="stat"><div class="stat-label">Credits</div><div class="stat-value" id="gold">100</div></div>
   </div>
-  <div class="controls">
+  <div class="controls" id="gameActionButtons">
     <button class="btn" id="plantAllBtn">Deploy All Drones (<span id="plantCost">0</span> cr)</button>
     <button class="btn" id="harvestAllBtn">Collect All Crystals</button>
   </div>
@@ -591,7 +592,36 @@ window.dom.deepUpgradeBtn.textContent=`Research (${window.gameState.research.dee
 window.dom.tradeUpgradeBtn.textContent=`Research (${window.gameState.research.tradeCost} CP)`;window.dom.tradeLevel.textContent=window.gameState.research.trade;window.dom.tradeUpgradeBtn.disabled=window.gameState.applePoints<window.gameState.research.tradeCost;
 window.dom.exchangeBtn.disabled=window.gameState.applePoints<100;window.dom.exchange1000Btn.disabled=window.gameState.applePoints<1000;window.dom.exchangeMaxBtn.disabled=window.gameState.applePoints<100;
 window.dom.autoDeployBtn.disabled=window.gameState.autoDeploy||window.gameState.gold<5000;window.dom.autoDeployBtn.textContent=window.gameState.autoDeploy?"Purchased ✓":"Buy (5000 cr)";
-let empties=window.gameState.plots.filter(p=>p.state==='empty').length;window.dom.plantCost.textContent=empties*plantCostPer();window.dom.plantAllBtn.disabled=(empties===0||window.gameState.gold<empties*plantCostPer());window.dom.harvestAllBtn.disabled=window.gameState.plots.every(p=>p.state!=='ready');}
+let empties=window.gameState.plots.filter(p=>p.state==='empty').length;window.dom.plantCost.textContent=empties*plantCostPer();
+    window.dom.applePoints.textContent=window.gameState.applePoints;window.dom.gold.textContent=window.gameState.gold;
+    let rate=calcRate();window.dom.exchangeRate.textContent=rate;
+    if(Date.now()<window.gameState.marketCrashUntil){let rem=window.gameState.marketCrashUntil-Date.now();window.dom.crashTimer.textContent=`⚠️ Crash ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;window.dom.crashTimer.className='crash';}
+    else if(Date.now()<window.gameState.boomUntil){let rem=window.gameState.boomUntil-Date.now();window.dom.crashTimer.textContent=`🚀 Boom ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;window.dom.crashTimer.className='boom';}
+    else window.dom.crashTimer.textContent="";
+
+    window.dom.growthUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.growth.cost} cr)`;window.dom.growthLevel.textContent=window.gameState.upgrades.growth.level;window.dom.growthUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.growth.cost;
+    window.dom.yieldUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.yield.cost} cr)`;window.dom.yieldLevel.textContent=window.gameState.upgrades.yield.level;window.dom.yieldUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.yield.cost;
+    window.dom.luckUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.luck.cost} cr)`;window.dom.luckLevel.textContent=window.gameState.upgrades.luck.level;window.dom.luckUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.luck.cost;
+    window.dom.droneUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.drone.cost} cr)`;window.dom.droneLevel.textContent=window.gameState.upgrades.drone.level;window.dom.droneUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.drone.cost;
+    window.dom.storageUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.storage.cost} cr)`;window.dom.storageLevel.textContent=window.gameState.upgrades.storage.level;window.dom.storageUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.storage.cost;
+    window.dom.researchPlotBtn.textContent=`Research (${window.gameState.research.plotsCost} CP)`;window.dom.researchPlots.textContent=window.gameState.research.plots;window.dom.researchPlotBtn.disabled=window.gameState.applePoints<window.gameState.research.plotsCost;
+    window.dom.deepUpgradeBtn.textContent=`Research (${window.gameState.research.deepCost} CP)`;window.dom.deepLevel.textContent=window.gameState.research.deep;window.dom.deepUpgradeBtn.disabled=window.gameState.applePoints<window.gameState.research.deepCost;
+    window.dom.tradeUpgradeBtn.textContent=`Research (${window.gameState.research.tradeCost} CP)`;window.dom.tradeLevel.textContent=window.gameState.research.trade;window.dom.tradeUpgradeBtn.disabled=window.gameState.applePoints<window.gameState.research.tradeCost;
+    window.dom.exchangeBtn.disabled=window.gameState.applePoints<100;window.dom.exchange1000Btn.disabled=window.gameState.applePoints<1000;window.dom.exchangeMaxBtn.disabled=window.gameState.applePoints<100;
+    window.dom.autoDeployBtn.disabled=window.gameState.autoDeploy||window.gameState.gold<5000;window.dom.autoDeployBtn.textContent=window.gameState.autoDeploy?"Purchased ✓":"Buy (5000 cr)";
+
+    // --- NEW LOGIC FOR HIDING/SHOWING PLANT/HARVEST BUTTONS ---
+    if (window.gameState.autoDeploy) {
+        window.dom.gameActionButtons.style.display = 'none'; // Hide the entire controls div
+    } else {
+        window.dom.gameActionButtons.style.display = 'grid'; // Show as grid (its default CSS display)
+        // Only apply disabled logic if buttons are visible (autoDeploy is false)
+        let empties = window.gameState.plots.filter(p=>p.state==='empty').length;
+        window.dom.plantCost.textContent=empties*plantCostPer();
+        window.dom.plantAllBtn.disabled=(empties===0||window.gameState.gold<empties*plantCostPer());
+        window.dom.harvestAllBtn.disabled=window.gameState.plots.every(p=>p.state!=='ready');
+    }
+}
 
 // Farm Rendering & Update (operates on window.gameState and window.dom)
 function renderFarm(){window.dom.farmGrid.innerHTML='';window.gameState.plots.forEach((p,i)=>{let el=document.createElement('div');el.className=`plot ${p.state}`;el.onclick=()=>handlePlot(i);let crop=document.createElement('span');crop.className='crop';el.appendChild(crop);let bar=document.createElement('div');bar.className='progress-bar';let fill=document.createElement('div');fill.className='progress-fill';bar.appendChild(fill);el.appendChild(bar);window.dom.farmGrid.appendChild(el);});}
