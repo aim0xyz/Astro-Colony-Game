@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
 <title>🌌 Astro Colony - Crystal Mining Game</title>
+
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
@@ -13,7 +14,10 @@
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    updatePassword,
+    EmailAuthProvider,
+    reauthenticateWithCredential
   } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
   import {
     getFirestore,
@@ -22,7 +26,7 @@
     getDoc
   } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
-  // 🔑 PUT YOUR FIREBASE CONFIG BELOW - Replace YOUR_... with your actual Firebase project details
+  // --- FIREBASE CONFIG (replace with your values if needed) ---
   const firebaseConfig = {
     apiKey: "AIzaSyAwk0pIbza8wo22FTHr4Y3unZozmoJBmEg",
     authDomain: "astro-colony-game.firebaseapp.com",
@@ -33,7 +37,6 @@
     measurementId: "G-XGB57PFGXJ"
   };
 
-  // Init Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -41,9 +44,9 @@
   window.firebaseAuth = auth;
   window.firebaseDb = db;
   window.gameState = {};
-  window.dom = {}; // Initialize window.dom here, will be populated in initializeGame
+  window.dom = {};
 
-  // --- DOM Elements ---
+  // --- DOM references that exist outside initializeGame ---
   const authContainer = document.getElementById('authContainer');
   const gameContainer = document.getElementById('gameContainer');
   const loginForm = document.getElementById('loginForm');
@@ -54,118 +57,121 @@
   const registerPassword = document.getElementById('registerPassword');
   const showRegisterBtn = document.getElementById('showRegister');
   const showLoginBtn = document.getElementById('showLogin');
-  const logoutBtn = document.getElementById('logoutBtn');
   const userStatus = document.getElementById('userStatus');
   const profileBtn = document.getElementById('profileBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-  // Profile Modal
+  // Profile modal static elements
   const profileModal = document.getElementById('profileModal');
   const closeModalProfile = document.getElementById('closeModalProfile');
   const profileEmailDisplay = document.getElementById('profileEmailDisplay');
   const usernameInput = document.getElementById('usernameInput');
   const saveUsernameBtn = document.getElementById('saveUsernameBtn');
 
+  // Change password inputs in profile
+  const currentPasswordInput = document.getElementById('currentPassword');
+  const newPasswordInput = document.getElementById('newPassword');
+  const changePasswordBtn = document.getElementById('changePasswordBtn');
+
+  // Info modal
+  const infoModal = document.getElementById('infoModal');
+  const infoTitle = document.getElementById('infoTitle');
+  const infoBody = document.getElementById('infoBody');
+  const closeInfoBtn = document.getElementById('closeInfoBtn');
+
+  // Notification container
+  const notificationContainer = document.getElementById('notificationContainer');
+
   // --- Auto-save ---
   let autoSaveIntervalId = null;
-  const AUTO_SAVE_INTERVAL = 10 * 1000; // Save every 10 seconds
+  const AUTO_SAVE_INTERVAL = 10 * 1000; // 10s
 
-  function startAutoSave() {
-    if (!autoSaveIntervalId) {
-      autoSaveIntervalId = setInterval(saveGame, AUTO_SAVE_INTERVAL);
-      console.log("Auto-saved!"); // Keeping console log for debug, removed user notification
-    }
+  function startAutoSave(){
+    if(!autoSaveIntervalId) autoSaveIntervalId = setInterval(saveGame, AUTO_SAVE_INTERVAL);
   }
-  function stopAutoSave() {
-    if (autoSaveIntervalId) {
-      clearInterval(autoSaveIntervalId);
-      autoSaveIntervalId = null;
-      console.log("Auto-save stopped.");
-    }
+  function stopAutoSave(){
+    if(autoSaveIntervalId){ clearInterval(autoSaveIntervalId); autoSaveIntervalId = null; }
   }
 
-  // --- Auth Functions ---
-  async function register() {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, registerEmail.value, registerPassword.value);
-      showNotification("Registered & Logged in as " + userCredential.user.email, true, 'system');
-    } catch (error) {
-      showNotification("Registration failed: " + error.message, false, 'system');
-    }
+  // --- Auth helpers ---
+  async function register(){
+    try{
+      const uc = await createUserWithEmailAndPassword(auth, registerEmail.value, registerPassword.value);
+      showNotification("Registered & logged in: " + uc.user.email, true, 'system');
+    } catch(err){ showNotification("Registration failed: " + err.message, false, 'system'); }
   }
-  async function login() {
-    try {
+  async function login(){
+    try{
       await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
       showNotification("Logged in!", true, 'system');
-    } catch (error) {
-      showNotification("Login failed: " + error.message, false, 'system');
-    }
+    } catch(err){ showNotification("Login failed: " + err.message, false, 'system'); }
   }
-  async function logout() {
-    try { await signOut(auth); showNotification("Logged out.", true, 'system'); }
-    catch (err) { showNotification("Logout failed: " + err.message, false, 'system'); }
+  async function logout(){
+    try{ await signOut(auth); showNotification("Logged out.", true, 'system'); }
+    catch(err){ showNotification("Logout failed: " + err.message, false, 'system'); }
   }
 
-  // --- Profile Editing ---
-  async function updateUsername() {
+  // --- Profile update ---
+  async function updateUsername(){
     const user = auth.currentUser;
-    if (user) {
-      const newUsername = usernameInput.value.trim();
-      if (newUsername.length > 0) {
-        try {
-          await updateProfile(user, { displayName: newUsername });
-          userStatus.textContent = `Logged in as: ${user.displayName}`;
-          showNotification("Username updated!", true, 'system');
-          closeProfileModal();
-        } catch (err) {
-          showNotification("Update failed: " + err.message, false, 'system');
-        }
-      } else {
-        showNotification("Username cannot be empty.", false, 'system');
-      }
-    }
-  }
-  function openProfileModal() {
-    const user = auth.currentUser;
-    if (user) {
-      profileEmailDisplay.textContent = user.email;
-      usernameInput.value = user.displayName || '';
-      profileModal.style.display = 'flex';
-    }
-  }
-  function closeProfileModal() {
-    profileModal.style.display = 'none';
+    if(!user){ showNotification("Not signed in", false, 'system'); return; }
+    const newName = usernameInput.value.trim();
+    if(!newName){ showNotification("Username cannot be empty", false, 'system'); return; }
+    try{
+      await updateProfile(user, { displayName: newName });
+      userStatus.textContent = `Logged in as: ${user.displayName || user.email}`;
+      showNotification("Username updated", true, 'system');
+      closeProfileModal();
+    } catch(err){ showNotification("Update failed: " + err.message, false, 'system'); }
   }
 
-  // --- Save/Load GameState ---
-  async function saveGame() {
+  // --- Change password (reauth required) ---
+  async function changePasswordHandler(){
     const user = auth.currentUser;
-    if (!user) return;
-    try {
+    if(!user){ showNotification("Not signed in", false, 'system'); return; }
+    const current = currentPasswordInput.value;
+    const next = newPasswordInput.value;
+    if(!current || !next){ showNotification("Please fill both password fields", false, 'system'); return; }
+    try{
+      const cred = EmailAuthProvider.credential(user.email, current);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, next);
+      showNotification("Password changed successfully", true, 'system');
+      // clear fields
+      currentPasswordInput.value = ''; newPasswordInput.value = '';
+    } catch(err){
+      showNotification("Password change failed: " + err.message, false, 'system');
+    }
+  }
+
+  // --- Save/Load state ---
+  async function saveGame(){
+    const user = auth.currentUser;
+    if(!user) return;
+    try{
       await setDoc(doc(db, "gamestates", user.uid), window.gameState);
-      console.log("Auto-saved!"); // Keeping console log for debug, removed user notification
-    } catch (err) {
-      console.error("Save failed:", err);
-    }
+      console.log("Saved game.");
+    } catch(err){ console.error("Save failed:", err); }
   }
-  async function loadGame(userId) {
-    try {
+  async function loadGame(userId){
+    try{
       const snap = await getDoc(doc(db, "gamestates", userId));
-      if (snap.exists()) {
+      if(snap.exists()){
         window.gameState = snap.data();
         initializeGame(true);
-        showNotification("Game loaded!", true, 'system');
+        showNotification("Game loaded", true, 'system');
       } else {
-        initializeGame(false); // No saved game, start new
+        initializeGame(false);
       }
-    } catch (err) {
-      console.error("Error loading game:", err);
-      initializeGame(false); // Error loading, start new
+    } catch(err){
+      console.error("Load failed:", err);
+      initializeGame(false);
     }
   }
 
-  // --- Auth State Change ---
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
+  // --- Auth state change ---
+  onAuthStateChanged(auth, (user)=>{
+    if(user){
       userStatus.textContent = `Logged in as: ${user.displayName || user.email}`;
       authContainer.style.display = 'none';
       gameContainer.style.display = 'block';
@@ -176,219 +182,234 @@
       authContainer.style.display = 'block';
       gameContainer.style.display = 'none';
       stopAutoSave();
-      initializeGame(false); // Clear game state for anonymous users
+      initializeGame(false);
     }
   });
 
-  // --- Listeners ---
-  loginForm.addEventListener('submit', (e)=>{e.preventDefault();login();});
-  registerForm.addEventListener('submit', (e)=>{e.preventDefault();register();});
+  // --- Listeners for auth UI ---
+  loginForm.addEventListener('submit', (e)=>{ e.preventDefault(); login(); });
+  registerForm.addEventListener('submit', (e)=>{ e.preventDefault(); register(); });
+  showRegisterBtn.addEventListener('click', ()=>{ loginForm.style.display='none'; registerForm.style.display='block'; });
+  showLoginBtn.addEventListener('click', ()=>{ loginForm.style.display='block'; registerForm.style.display='none'; });
   logoutBtn.addEventListener('click', logout);
-  showRegisterBtn.addEventListener('click', ()=>{loginForm.style.display='none';registerForm.style.display='block';});
-  showLoginBtn.addEventListener('click', ()=>{loginForm.style.display='block';registerForm.style.display='none';});
-
   profileBtn.addEventListener('click', openProfileModal);
   closeModalProfile.addEventListener('click', closeProfileModal);
   saveUsernameBtn.addEventListener('click', updateUsername);
-  profileModal.addEventListener('click',(e)=>{if(e.target===profileModal)closeProfileModal()});
+  changePasswordBtn.addEventListener('click', changePasswordHandler);
+  profileModal.addEventListener('click', (e)=>{ if(e.target===profileModal) closeProfileModal(); });
 
-  document.addEventListener('visibilitychange', ()=> {
-    if(document.hidden && auth.currentUser) saveGame();
-  });
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden && auth.currentUser) saveGame(); });
 
-  // --- Core Game Functions ---
+  // --- Core game logic (mostly kept from user-provided code, adapted) ---
+  function plantCostPer(){ return Math.max(10 - window.gameState.upgrades.drone.level, 2); }
 
-  function plantCostPer(){return Math.max(10-window.gameState.upgrades.drone.level,2);}
-
-  // Modified plantSeed to return cost (or 0 if failed). Only notifies for manual actions.
   function plantSeed(p){
-      const cost = plantCostPer();
-      if(!p || p.state !== 'empty' || window.gameState.gold < cost) return 0; // Return 0 if cannot plant
-
-      p.state = 'planted';
-      p.plantTime = Date.now();
-      p.growthDuration = Math.max(3000, 30000 / window.gameState.upgrades.growth.level * (1 - 0.1 * window.gameState.research.deep));
-      window.gameState.gold -= cost;
-
-      // Only show notification if not auto-deploying (manual action)
-      if (!window.gameState.autoDeploy) {
-          showNotification("🛰️ Drone deployed!", true, 'manual');
-      }
-      return cost; // Return the cost for consolidation
+    const cost = plantCostPer();
+    if(!p || p.state !== 'empty' || window.gameState.gold < cost) return 0;
+    p.state = 'planted';
+    p.plantTime = Date.now();
+    p.growthDuration = Math.max(3000, 30000 / window.gameState.upgrades.growth.level * (1 - 0.1 * window.gameState.research.deep));
+    window.gameState.gold -= cost;
+    // manual notification uses type 'manual'
+    if(!window.gameState.autoDeploy) showNotification("🛰️ Drone deployed!", true, 'manual');
+    return cost;
   }
 
-  // Modified harvestPlot to return crystal and gold gain. Only notifies for manual actions.
   function harvestPlot(p){
-      if(p.state !== 'ready') return { cpGain: 0, goldGain: 0 }; // Return 0 if not ready
-
-      let base = 15;
-      let mul = window.gameState.upgrades.yield.level + window.gameState.upgrades.storage.level * 0.2;
-      let luck = Math.random() < 0.1 * window.gameState.upgrades.luck.level ? 2 : 1;
-      let cpGain = Math.floor(base * mul * luck);
-      let goldGain = Math.floor(cpGain / 2);
-
-      window.gameState.applePoints += cpGain;
-      window.gameState.gold += goldGain;
-      p.state = 'empty';
-      p.plantTime = null;
-
-      // Only show notification if not auto-harvesting (manual action)
-      if (!window.gameState.autoDeploy) {
-          showNotification(`${luck > 1 ? '🌠' : '💎'} +${cpGain} CP`, luck > 1, 'manual');
-      }
-      return { cpGain: cpGain, goldGain: goldGain }; // Return the gains for consolidation
+    if(p.state !== 'ready') return { cpGain:0, goldGain:0 };
+    let base = 15;
+    let mul = window.gameState.upgrades.yield.level + window.gameState.upgrades.storage.level * 0.2;
+    let luck = Math.random() < 0.1 * window.gameState.upgrades.luck.level ? 2 : 1;
+    let cpGain = Math.floor(base * mul * luck);
+    let goldGain = Math.floor(cpGain / 2);
+    window.gameState.applePoints += cpGain;
+    window.gameState.gold += goldGain;
+    p.state = 'empty'; p.plantTime = null;
+    if(!window.gameState.autoDeploy) showNotification(`${luck>1 ? '🌠' : '💎'} +${cpGain} CP`, luck>1, 'manual');
+    return { cpGain, goldGain };
   }
 
-  function plantAll(){
-      window.gameState.plots.forEach(p=>{plantSeed(p);});
-      updateUI();
-  }
-  function harvestAll(){
-      window.gameState.plots.forEach(p=>{harvestPlot(p);});
-      updateUI();
-  }
+  function plantAll(){ window.gameState.plots.forEach(p=>plantSeed(p)); updateUI(); }
+  function harvestAll(){ window.gameState.plots.forEach(p=>harvestPlot(p)); updateUI(); }
 
   function buyUpgrade(type){
-      if(window.gameState.gold<window.gameState.upgrades[type].cost)return;
-      window.gameState.gold-=window.gameState.upgrades[type].cost;
-      window.gameState.upgrades[type].level++;
-      window.gameState.upgrades[type].cost=Math.floor(window.gameState.upgrades[type].cost*1.5);
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} upgraded!`,true,'purchase');
-      updateUI();
+    if(window.gameState.gold < window.gameState.upgrades[type].cost) return;
+    window.gameState.gold -= window.gameState.upgrades[type].cost;
+    window.gameState.upgrades[type].level++;
+    window.gameState.upgrades[type].cost = Math.floor(window.gameState.upgrades[type].cost * 1.5);
+    showNotification(`${capitalize(type)} upgraded!`, true, 'purchase');
+    updateUI();
   }
+
   function buyResearch(type){
-      if(window.gameState.applePoints<window.gameState.research[type+'Cost'])return;
-      window.gameState.applePoints-=window.gameState.research[type+'Cost'];
-      window.gameState.research[type]++;
-      window.gameState.research[type+'Cost']=Math.floor(window.gameState.research[type+'Cost']*2.5);
-      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} Research complete!`,true,'purchase');
-      if(type==='plots'){addPlot();}
-      updateUI();
+    const costKey = type + 'Cost';
+    if(window.gameState.applePoints < window.gameState.research[costKey]) return;
+    window.gameState.applePoints -= window.gameState.research[costKey];
+    window.gameState.research[type]++;
+    window.gameState.research[costKey] = Math.floor(window.gameState.research[costKey] * 2.5);
+    showNotification(`${capitalize(type)} research complete!`, true, 'purchase');
+    if(type === 'plots') addPlot();
+    updateUI();
   }
+
   function addPlot(){
-      window.gameState.plots.push({id:window.gameState.plots.length,state:'empty'});
-      let newPlot=document.createElement('div');
-      newPlot.className='plot empty';newPlot.id=`plot-${window.gameState.plots.length-1}`;
-      newPlot.innerHTML='<div class="crop"></div><div class="progress-bar"><div class="progress-fill"></div></div>';
-      newPlot.addEventListener('click',()=>handlePlot(window.gameState.plots.length-1));
-      window.dom.farmGrid.appendChild(newPlot);
+    window.gameState.plots.push({ id: window.gameState.plots.length, state:'empty' });
+    const newPlot = document.createElement('div');
+    newPlot.className = 'plot empty';
+    newPlot.id = `plot-${window.gameState.plots.length-1}`;
+    newPlot.innerHTML = '<div class="crop"></div><div class="progress-bar"><div class="progress-fill"></div></div>';
+    newPlot.addEventListener('click', ()=> handlePlot(window.gameState.plots.length-1));
+    window.dom.farmGrid.appendChild(newPlot);
   }
 
   function buyAutoDeploy(){
-      if(window.gameState.gold<5000)return;
-      window.gameState.gold-=5000;
-      window.gameState.autoDeploy=true;
-      showNotification("Autonomous Drone AI activated!",true,'purchase');
-      updateUI();
+    if(window.gameState.gold < 5000) return;
+    window.gameState.gold -= 5000;
+    window.gameState.autoDeploy = true;
+    showNotification("Autonomous Drone AI activated!", true, 'purchase');
+    updateUI();
   }
+
   function exchangeCP(amount){
-      if(window.gameState.applePoints<amount)return;
-      let goldGain=Math.floor(amount*calcRate());
-      window.gameState.applePoints-=amount;
-      window.gameState.gold+=goldGain;
-      showNotification(`Exchanged ${amount} CP for ${goldGain} Gold!`,true,'exchange');
-      updateUI();
+    if(window.gameState.applePoints < amount) return;
+    let goldGain = Math.floor(amount * calcRate());
+    window.gameState.applePoints -= amount;
+    window.gameState.gold += goldGain;
+    showNotification(`Exchanged ${amount} CP for ${goldGain} Gold!`, true, 'exchange');
+    updateUI();
   }
   function exchangeCPMax(){
     let max = Math.floor(window.gameState.applePoints / 100) * 100;
-    if (max > 0) {
-      exchangeCP(max);
-    }
+    if(max > 0) exchangeCP(max);
   }
 
   function calcRate(){
-      let rate=0.5;
-      rate+=window.gameState.research.trade*0.05;
-      if(Date.now()<window.gameState.marketCrashUntil)rate*=0.25;
-      if(Date.now()<window.gameState.boomUntil)rate*=2.0;
-      return rate.toFixed(2);
+    let rate = 0.5;
+    rate += window.gameState.research.trade * 0.05;
+    if(Date.now() < window.gameState.marketCrashUntil) rate *= 0.25;
+    if(Date.now() < window.gameState.boomUntil) rate *= 2.0;
+    return rate.toFixed(2);
   }
 
-  // MODIFIED updatePlots to handle auto-deploy and consolidated notifications, governed by notification settings
+  // --- Update plots with auto logic and consolidated notifications honoring settings ---
   function updatePlots(){
-      let elems = window.dom.farmGrid.querySelectorAll('.plot');
-      window.gameState.plots.forEach((p,i)=>{
-          let el=elems[i],crop=el.querySelector('.crop');
-          crop.textContent=(p.state==='empty'?'🛰️':p.state==='planted'?'⛏️':'💎');
-          el.className=`plot ${p.state}`;
-          let bar=el.querySelector('.progress-bar');bar.style.display=p.state==='planted'?'block':'none';
-          if(p.state==='planted'){
-              let prog=Math.min(100,(Date.now()-p.plantTime)/p.growthDuration*100);
-              el.querySelector('.progress-fill').style.width=prog+'%';
-              if(Date.now()-p.plantTime>=p.growthDuration)p.state='ready';
-          }
+    const elems = window.dom.farmGrid.querySelectorAll('.plot');
+    window.gameState.plots.forEach((p, i) => {
+      const el = elems[i];
+      const crop = el.querySelector('.crop');
+      crop.textContent = (p.state==='empty'?'🛰️':p.state==='planted'?'⛏️':'💎');
+      el.className = `plot ${p.state}`;
+      const bar = el.querySelector('.progress-bar');
+      bar.style.display = p.state === 'planted' ? 'block' : 'none';
+      if(p.state === 'planted'){
+        const prog = Math.min(100, (Date.now() - p.plantTime) / p.growthDuration * 100);
+        el.querySelector('.progress-fill').style.width = prog + '%';
+        if(Date.now() - p.plantTime >= p.growthDuration) p.state = 'ready';
+      }
+    });
+
+    if(window.gameState.autoDeploy){
+      let autoHarvestedCP = 0;
+      let autoPlantedCount = 0;
+      window.gameState.plots.filter(p => p.state === 'ready').forEach(p => {
+        const r = harvestPlot(p); // harvestPlot suppresses manual notifications when autoDeploy is true
+        autoHarvestedCP += r.cpGain;
+      });
+      window.gameState.plots.filter(p => p.state === 'empty').forEach(p => {
+        const cost = plantSeed(p);
+        if(cost > 0) autoPlantedCount++;
       });
 
-      // Auto-deploy logic with consolidated notifications
-      if(window.gameState.autoDeploy){
-          let autoHarvestedCP = 0;
-          let autoHarvestedGold = 0;
-          let autoPlantedCount = 0;
-
-          // Auto-harvest any ready plots
-          window.gameState.plots.filter(p => p.state === 'ready').forEach(p => {
-              const result = harvestPlot(p); // Harvest, but harvestPlot suppresses manual notifications when autoDeploy is true
-              autoHarvestedCP += result.cpGain;
-              autoHarvestedGold += result.goldGain;
-          });
-
-          // Auto-plant any empty plots
-          window.gameState.plots.filter(p => p.state === 'empty').forEach(p => {
-              const cost = plantSeed(p); // Plant, but plantSeed suppresses manual notifications when autoDeploy is true
-              if (cost > 0) { // Check if planting was successful
-                  autoPlantedCount++;
-              }
-          });
-
-          // Show consolidated notifications for auto-actions only if user enabled 'auto' notifications
-          if (autoHarvestedCP > 0 && window.gameState.notificationSettings && window.gameState.notificationSettings.auto) {
-              showNotification(`🤖 Auto-collected ${autoHarvestedCP} CP!`, true, 'auto');
-          }
-          if (autoPlantedCount > 0 && window.gameState.notificationSettings && window.gameState.notificationSettings.auto) {
-               showNotification(`🤖 Auto-deployed ${autoPlantedCount} drones!`, true, 'auto');
-          }
+      // Only show auto summaries if user enabled 'auto'
+      if(window.gameState.notificationSettings && window.gameState.notificationSettings.auto){
+        if(autoHarvestedCP > 0) showNotification(`🤖 Auto-collected ${autoHarvestedCP} CP!`, true, 'auto');
+        if(autoPlantedCount > 0) showNotification(`🤖 Auto-deployed ${autoPlantedCount} drones!`, true, 'auto');
       }
+    }
   }
 
   function handlePlot(index){
-      let p=window.gameState.plots[index];
-      if(p.state==='empty'){plantSeed(p);}
-      else if(p.state==='ready'){harvestPlot(p);}
-      updateUI();
+    const p = window.gameState.plots[index];
+    if(p.state === 'empty') plantSeed(p);
+    else if(p.state === 'ready') harvestPlot(p);
+    updateUI();
   }
 
-  // MODIFIED updateUI to hide/show action buttons
+  // --- UI update ---
   function updateUI(){
-    window.dom.applePoints.textContent=window.gameState.applePoints;window.dom.gold.textContent=window.gameState.gold;
-    let rate=calcRate();window.dom.exchangeRate.textContent=rate;
-    if(Date.now()<window.gameState.marketCrashUntil){let rem=window.gameState.marketCrashUntil-Date.now();window.dom.crashTimer.textContent=`⚠️ Crash ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;window.dom.crashTimer.className='crash';}
-    else if(Date.now()<window.gameState.boomUntil){let rem=window.gameState.boomUntil-Date.now();window.dom.crashTimer.textContent=`🚀 Boom ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;window.dom.crashTimer.className='boom';}
-    else window.dom.crashTimer.textContent="";
+    window.dom.applePoints.textContent = window.gameState.applePoints;
+    window.dom.gold.textContent = window.gameState.gold;
+    window.dom.seasonDay.textContent = window.gameState.seasonDay;
+    window.dom.seasonTimer.textContent = `Next event in ${Math.floor((window.gameState.seasonEndTime - Date.now()) / 1000)}s`;
 
-    window.dom.growthUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.growth.cost} cr)`;window.dom.growthLevel.textContent=window.gameState.upgrades.growth.level;window.dom.growthUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.growth.cost;
-    window.dom.yieldUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.yield.cost} cr)`;window.dom.yieldLevel.textContent=window.gameState.upgrades.yield.level;window.dom.yieldUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.yield.cost;
-    window.dom.luckUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.luck.cost} cr)`;window.dom.luckLevel.textContent=window.gameState.upgrades.luck.level;window.dom.luckUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.luck.cost;
-    window.dom.droneUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.drone.cost} cr)`;window.dom.droneLevel.textContent=window.gameState.upgrades.drone.level;window.dom.droneUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.drone.cost;
-    window.dom.storageUpgradeBtn.textContent=`Upgrade (${window.gameState.upgrades.storage.cost} cr)`;window.dom.storageLevel.textContent=window.gameState.upgrades.storage.level;window.dom.storageUpgradeBtn.disabled=window.gameState.gold<window.gameState.upgrades.storage.cost;
-    window.dom.researchPlotBtn.textContent=`Research (${window.gameState.research.plotsCost} CP)`;window.dom.researchPlots.textContent=window.gameState.research.plots;window.dom.researchPlotBtn.disabled=window.gameState.applePoints<window.gameState.research.plotsCost;
-    window.dom.deepUpgradeBtn.textContent=`Research (${window.gameState.research.deepCost} CP)`;window.dom.deepLevel.textContent=window.gameState.research.deep;window.dom.deepUpgradeBtn.disabled=window.gameState.applePoints<window.gameState.research.deepCost;
-    window.dom.tradeUpgradeBtn.textContent=`Research (${window.gameState.research.tradeCost} CP)`;window.dom.tradeLevel.textContent=window.gameState.research.trade;window.dom.tradeUpgradeBtn.disabled=window.gameState.applePoints<window.gameState.research.tradeCost;
-    window.dom.exchangeBtn.disabled=window.gameState.applePoints<100;window.dom.exchange1000Btn.disabled=window.gameState.applePoints<1000;window.dom.exchangeMaxBtn.disabled=window.gameState.applePoints<100;
-    window.dom.autoDeployBtn.disabled=window.gameState.autoDeploy||window.gameState.gold<5000;window.dom.autoDeployBtn.textContent=window.gameState.autoDeploy?"Purchased ✓":"Buy (5000 cr)";
+    // exchange rate shown in exchange area
+    window.dom.exchangeRate.textContent = calcRate();
 
-    // --- NEW LOGIC FOR HIDING/SHOWING PLANT/HARVEST BUTTONS ---
-    if (window.gameState.autoDeploy) {
-        window.dom.gameActionButtons.style.display = 'none'; // Hide the entire controls div
+    // crash/boom status
+    if(Date.now() < window.gameState.marketCrashUntil){
+      const rem = window.gameState.marketCrashUntil - Date.now();
+      window.dom.crashTimer.textContent = `⚠️ Crash ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;
+      window.dom.crashTimer.className = 'crash';
+    } else if(Date.now() < window.gameState.boomUntil){
+      const rem = window.gameState.boomUntil - Date.now();
+      window.dom.crashTimer.textContent = `🚀 Boom ends in ${Math.floor(rem/60000)}m ${Math.floor((rem%60000)/1000)}s`;
+      window.dom.crashTimer.className = 'boom';
     } else {
-        window.dom.gameActionButtons.style.display = 'grid'; // Show as grid (its default CSS display)
-        // Only apply disabled logic if buttons are visible (autoDeploy is false)
-        let empties = window.gameState.plots.filter(p=>p.state==='empty').length;
-        window.dom.plantCost.textContent=empties*plantCostPer();
-        window.dom.plantAllBtn.disabled=(empties===0||window.gameState.gold<empties*plantCostPer());
-        window.dom.harvestAllBtn.disabled=window.gameState.plots.every(p=>p.state!=='ready');
+      window.dom.crashTimer.textContent = '';
+      window.dom.crashTimer.className = '';
     }
 
-    // Update notification UI toggles (if present)
+    // Upgrades and research text + disabled states
+    window.dom.growthUpgradeBtn.textContent = `Upgrade (${window.gameState.upgrades.growth.cost} cr)`;
+    window.dom.growthLevel.textContent = window.gameState.upgrades.growth.level;
+    window.dom.growthUpgradeBtn.disabled = window.gameState.gold < window.gameState.upgrades.growth.cost;
+
+    window.dom.yieldUpgradeBtn.textContent = `Upgrade (${window.gameState.upgrades.yield.cost} cr)`;
+    window.dom.yieldLevel.textContent = window.gameState.upgrades.yield.level;
+    window.dom.yieldUpgradeBtn.disabled = window.gameState.gold < window.gameState.upgrades.yield.cost;
+
+    window.dom.luckUpgradeBtn.textContent = `Upgrade (${window.gameState.upgrades.luck.cost} cr)`;
+    window.dom.luckLevel.textContent = window.gameState.upgrades.luck.level;
+    window.dom.luckUpgradeBtn.disabled = window.gameState.gold < window.gameState.upgrades.luck.cost;
+
+    window.dom.droneUpgradeBtn.textContent = `Upgrade (${window.gameState.upgrades.drone.cost} cr)`;
+    window.dom.droneLevel.textContent = window.gameState.upgrades.drone.level;
+    window.dom.droneUpgradeBtn.disabled = window.gameState.gold < window.gameState.upgrades.drone.cost;
+
+    window.dom.storageUpgradeBtn.textContent = `Upgrade (${window.gameState.upgrades.storage.cost} cr)`;
+    window.dom.storageLevel.textContent = window.gameState.upgrades.storage.level;
+    window.dom.storageUpgradeBtn.disabled = window.gameState.gold < window.gameState.upgrades.storage.cost;
+
+    window.dom.researchPlotBtn.textContent = `Research (${window.gameState.research.plotsCost} CP)`;
+    window.dom.researchPlots.textContent = window.gameState.research.plots;
+    window.dom.researchPlotBtn.disabled = window.gameState.applePoints < window.gameState.research.plotsCost;
+
+    window.dom.deepUpgradeBtn.textContent = `Research (${window.gameState.research.deepCost} CP)`;
+    window.dom.deepLevel.textContent = window.gameState.research.deep;
+    window.dom.deepUpgradeBtn.disabled = window.gameState.applePoints < window.gameState.research.deepCost;
+
+    window.dom.tradeUpgradeBtn.textContent = `Research (${window.gameState.research.tradeCost} CP)`;
+    window.dom.tradeLevel.textContent = window.gameState.research.trade;
+    window.dom.tradeUpgradeBtn.disabled = window.gameState.applePoints < window.gameState.research.tradeCost;
+
+    window.dom.exchangeBtn.disabled = window.gameState.applePoints < 100;
+    window.dom.exchange1000Btn.disabled = window.gameState.applePoints < 1000;
+    window.dom.exchangeMaxBtn.disabled = window.gameState.applePoints < 100;
+
+    window.dom.autoDeployBtn.disabled = window.gameState.autoDeploy || window.gameState.gold < 5000;
+    window.dom.autoDeployBtn.textContent = window.gameState.autoDeploy ? "Purchased ✓" : "Buy (5000 cr)";
+
+    // Plant/Harvest action visibility
+    if(window.gameState.autoDeploy) window.dom.gameActionButtons.style.display = 'none';
+    else {
+      window.dom.gameActionButtons.style.display = 'grid';
+      const empties = window.gameState.plots.filter(p=>p.state==='empty').length;
+      window.dom.plantCost.textContent = empties * plantCostPer();
+      window.dom.plantAllBtn.disabled = (empties === 0 || window.gameState.gold < empties * plantCostPer());
+      window.dom.harvestAllBtn.disabled = window.gameState.plots.every(p => p.state !== 'ready');
+    }
+
+    // Update profile toggles if modal exists
     if(window.dom.notifManual) window.dom.notifManual.checked = !!window.gameState.notificationSettings.manual;
     if(window.dom.notifAuto) window.dom.notifAuto.checked = !!window.gameState.notificationSettings.auto;
     if(window.dom.notifMarket) window.dom.notifMarket.checked = !!window.gameState.notificationSettings.market;
@@ -397,489 +418,611 @@
     if(window.dom.notifSystem) window.dom.notifSystem.checked = !!window.gameState.notificationSettings.system;
   }
 
+  function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // --- Game loop / seasons ---
   let gameLoopInterval;
   function updateGame(){
-      let now=Date.now();
-      let delta=now-window.gameState.lastDayTick;
-      if(delta>=1000){ // Tick every second
-          window.gameState.lastDayTick=now;
-          updatePlots();
-          updateUI();
-      }
-      // Season logic (every 30 days for simplicity, about 30 seconds if tick is 1s)
-      if(now>=window.gameState.seasonEndTime){
-        window.gameState.seasonDay++;
-        window.gameState.seasonEndTime = now + 30 * 1000; // Next season in 30 seconds
-        showNotification(`Day ${window.gameState.seasonDay}!`, true, 'system');
-
-        // Random market events
-        let rand = Math.random();
-        if(rand < 0.1) { // 10% chance of crash
-            window.gameState.marketCrashUntil = now + 15 * 1000; // 15s crash
-            showNotification("Market Crash!", false, 'market');
-        } else if (rand < 0.2) { // 10% chance of boom
-            window.gameState.boomUntil = now + 15 * 1000; // 15s boom
-            showNotification("Market Boom!", true, 'market');
-        }
-      }
-      window.dom.seasonDay.textContent=window.gameState.seasonDay;
-      window.dom.seasonTimer.textContent=`Next event in ${Math.floor((window.gameState.seasonEndTime-now)/1000)}s`;
+    const now = Date.now();
+    const delta = now - window.gameState.lastDayTick;
+    if(delta >= 1000){
+      window.gameState.lastDayTick = now;
+      updatePlots();
+      updateUI();
+    }
+    if(now >= window.gameState.seasonEndTime){
+      window.gameState.seasonDay++;
+      window.gameState.seasonEndTime = now + 30 * 1000;
+      showNotification(`Day ${window.gameState.seasonDay}!`, true, 'system');
+      const r = Math.random();
+      if(r < 0.1){ window.gameState.marketCrashUntil = now + 15 * 1000; showNotification("Market Crash!", false, 'market'); }
+      else if(r < 0.2){ window.gameState.boomUntil = now + 15 * 1000; showNotification("Market Boom!", true, 'market'); }
+    }
+    window.dom.seasonDay.textContent = window.gameState.seasonDay;
+    window.dom.seasonTimer.textContent = `Next event in ${Math.floor((window.gameState.seasonEndTime - Date.now())/1000)}s`;
   }
 
-  function initializeGame(loaded) {
-    if (!loaded) {
-      window.gameState = {applePoints:0,gold:100,plotsOwned:4,plots:[],autoDeploy:false,
-        upgrades:{growth:{level:1,cost:500},yield:{level:1,cost:750},luck:{level:1,cost:1000},drone:{level:1,cost:1200},storage:{level:1,cost:1500}},
-        research:{plots:0,plotsCost:2000,deep:0,deepCost:3000,trade:0,tradeCost:5000},
-        seasonDay:1,seasonEndTime:Date.now()+30*1000,lastDayTick:Date.now(), // 30 seconds for a "day" for testing
-        marketCrashUntil:0,boomUntil:0,
-        // Notification settings defaults:
+  // --- Info descriptions for upgrades/research ---
+  const descriptions = {
+    growth: "Growth increases seed maturation speed. Higher growth = faster crystals ready to harvest.",
+    yield: "Yield increases the amount of crystals produced per harvest.",
+    luck: "Luck increases chance of finding a rare bonus yield (doubles yield occasionally).",
+    drone: "Drone tech reduces planting cost and improves automation efficiency.",
+    storage: "Storage increases effective yield by providing bonuses to collected crystals.",
+    plots: "Researching Plots gives you new mining plots to expand your farm.",
+    deep: "Deep Mining unlocks discoveries that increase growth efficiency.",
+    trade: "Trade Routes improve the market exchange rate, giving more gold per crystal."
+  };
+
+  function openInfo(title, key){
+    infoTitle.textContent = title;
+    infoBody.textContent = descriptions[key] || "No description available.";
+    infoModal.style.display = 'flex';
+  }
+  closeInfoBtn.addEventListener('click', ()=> infoModal.style.display = 'none');
+  infoModal.addEventListener('click', (e)=> { if(e.target === infoModal) infoModal.style.display = 'none'; });
+
+  // --- Initialize game (create DOM mapping, listeners, render plots, etc.) ---
+  function initializeGame(loaded){
+    if(!loaded){
+      window.gameState = {
+        applePoints: 0,
+        gold: 100,
+        plotsOwned: 4,
+        plots: [],
+        autoDeploy: false,
+        upgrades: {
+          growth: { level: 1, cost: 500 },
+          yield: { level: 1, cost: 750 },
+          luck: { level: 1, cost: 1000 },
+          drone: { level: 1, cost: 1200 },
+          storage: { level: 1, cost: 1500 }
+        },
+        research: { plots: 0, plotsCost: 2000, deep: 0, deepCost: 3000, trade: 0, tradeCost: 5000 },
+        seasonDay: 1,
+        seasonEndTime: Date.now() + 30 * 1000,
+        lastDayTick: Date.now(),
+        marketCrashUntil: 0,
+        boomUntil: 0,
         notificationSettings: { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true }
       };
-      for(let i=0;i<window.gameState.plotsOwned;i++){window.gameState.plots.push({id:i,state:'empty'});}
+      for(let i=0;i<window.gameState.plotsOwned;i++) window.gameState.plots.push({ id:i, state:'empty' });
     } else {
-      // Ensure notificationSettings exist after load
-      if(!window.gameState.notificationSettings) {
+      if(!window.gameState.notificationSettings){
         window.gameState.notificationSettings = { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true };
       }
     }
 
-    // Re-assign dom elements to window.dom as they might be called before all are set
-    // This is crucial for initial setup and after loading a game state
+    // map DOM elements to window.dom
     window.dom = {
-        gameContainer:document.getElementById('gameContainer'),
-        farmGrid:document.getElementById('farmGrid'),
-        applePoints:document.getElementById('applePoints'),
-        gold:document.getElementById('gold'),
-        plantCost:document.getElementById('plantCost'),
-        seasonDay:document.getElementById('seasonDay'),
-        seasonTimer:document.getElementById('seasonTimer'),
+      gameContainer: document.getElementById('gameContainer'),
+      farmGrid: document.getElementById('farmGrid'),
+      applePoints: document.getElementById('applePoints'),
+      gold: document.getElementById('gold'),
+      plantCost: document.getElementById('plantCost'),
+      seasonDay: document.getElementById('seasonDay'),
+      seasonTimer: document.getElementById('seasonTimer'),
 
-        growthLevel:document.getElementById('growthLevel'),growthUpgradeBtn:document.getElementById('growthUpgradeBtn'),
-        yieldLevel:document.getElementById('yieldLevel'),yieldUpgradeBtn:document.getElementById('yieldUpgradeBtn'),
-        luckLevel:document.getElementById('luckLevel'),luckUpgradeBtn:document.getElementById('luckUpgradeBtn'),
-        droneLevel:document.getElementById('droneLevel'),droneUpgradeBtn:document.getElementById('droneUpgradeBtn'),
-        storageLevel:document.getElementById('storageLevel'),storageUpgradeBtn:document.getElementById('storageUpgradeBtn'),
-        autoDeployBtn:document.getElementById('autoDeployBtn'),
+      growthLevel: document.getElementById('growthLevel'),
+      growthUpgradeBtn: document.getElementById('growthUpgradeBtn'),
+      growthInfoBtn: document.getElementById('info-growth'),
 
-        researchPlots:document.getElementById('researchPlots'),researchPlotBtn:document.getElementById('researchPlotBtn'),
-        deepLevel:document.getElementById('deepLevel'),deepUpgradeBtn:document.getElementById('deepUpgradeBtn'),
-        tradeLevel:document.getElementById('tradeLevel'),tradeUpgradeBtn:document.getElementById('tradeTradeBtn'),
+      yieldLevel: document.getElementById('yieldLevel'),
+      yieldUpgradeBtn: document.getElementById('yieldUpgradeBtn'),
+      yieldInfoBtn: document.getElementById('info-yield'),
 
-        // exchangeRate moved into the exchange section in the HTML
-        exchangeRate:document.getElementById('exchangeRate'),
-        exchangeBtn:document.getElementById('exchangeBtn'),exchange1000Btn:document.getElementById('exchange1000Btn'),exchangeMaxBtn:document.getElementById('exchangeMaxBtn'),
+      luckLevel: document.getElementById('luckLevel'),
+      luckUpgradeBtn: document.getElementById('luckUpgradeBtn'),
+      luckInfoBtn: document.getElementById('info-luck'),
 
-        plantAllBtn:document.getElementById('plantAllBtn'),
-        harvestAllBtn:document.getElementById('harvestAllBtn'),
-        crashTimer:document.getElementById('crashTimer'),
-        gameActionButtons:document.getElementById('gameActionButtons'),
+      droneLevel: document.getElementById('droneLevel'),
+      droneUpgradeBtn: document.getElementById('droneUpgradeBtn'),
+      droneInfoBtn: document.getElementById('info-drone'),
 
-        // Notification toggles
-        notifManual:document.getElementById('notifManual'),
-        notifAuto:document.getElementById('notifAuto'),
-        notifMarket:document.getElementById('notifMarket'),
-        notifPurchase:document.getElementById('notifPurchase'),
-        notifExchange:document.getElementById('notifExchange'),
-        notifSystem:document.getElementById('notifSystem')
+      storageLevel: document.getElementById('storageLevel'),
+      storageUpgradeBtn: document.getElementById('storageUpgradeBtn'),
+      storageInfoBtn: document.getElementById('info-storage'),
+
+      autoDeployBtn: document.getElementById('autoDeployBtn'),
+
+      researchPlots: document.getElementById('researchPlots'),
+      researchPlotBtn: document.getElementById('researchPlotBtn'),
+      researchPlotInfo: document.getElementById('info-plots'),
+
+      deepLevel: document.getElementById('deepLevel'),
+      deepUpgradeBtn: document.getElementById('deepUpgradeBtn'),
+      deepInfoBtn: document.getElementById('info-deep'),
+
+      tradeLevel: document.getElementById('tradeLevel'),
+      tradeUpgradeBtn: document.getElementById('tradeTradeBtn'),
+      tradeInfoBtn: document.getElementById('info-trade'),
+
+      exchangeRate: document.getElementById('exchangeRate'),
+      exchangeBtn: document.getElementById('exchangeBtn'),
+      exchange1000Btn: document.getElementById('exchange1000Btn'),
+      exchangeMaxBtn: document.getElementById('exchangeMaxBtn'),
+
+      plantAllBtn: document.getElementById('plantAllBtn'),
+      harvestAllBtn: document.getElementById('harvestAllBtn'),
+      crashTimer: document.getElementById('crashTimer'),
+      gameActionButtons: document.getElementById('gameActionButtons'),
+
+      // profile modal notification toggles (moved into profile)
+      notifManual: document.getElementById('notifManual'),
+      notifAuto: document.getElementById('notifAuto'),
+      notifMarket: document.getElementById('notifMarket'),
+      notifPurchase: document.getElementById('notifPurchase'),
+      notifExchange: document.getElementById('notifExchange'),
+      notifSystem: document.getElementById('notifSystem')
     };
 
-    // Set up event listeners for newly rendered elements (plots) or re-bind if game loaded
-    // Remove listeners first to prevent duplicates on game load
-    try { window.dom.plantAllBtn.removeEventListener('click', plantAll); } catch(e){}
-    try { window.dom.harvestAllBtn.removeEventListener('click', harvestAll); } catch(e){}
-    try { window.dom.growthUpgradeBtn.removeEventListener('click', () => buyUpgrade('growth')); } catch(e){}
-    try { window.dom.yieldUpgradeBtn.removeEventListener('click', () => buyUpgrade('yield')); } catch(e){}
-    try { window.dom.luckUpgradeBtn.removeEventListener('click', () => buyUpgrade('luck')); } catch(e){}
-    try { window.dom.droneUpgradeBtn.removeEventListener('click', () => buyUpgrade('drone')); } catch(e){}
-    try { window.dom.storageUpgradeBtn.removeEventListener('click', () => buyUpgrade('storage')); } catch(e){}
-    try { window.dom.autoDeployBtn.removeEventListener('click', buyAutoDeploy); } catch(e){}
-    try { window.dom.researchPlotBtn.removeEventListener('click', () => buyResearch('plots')); } catch(e){}
-    try { window.dom.deepUpgradeBtn.removeEventListener('click', () => buyResearch('deep')); } catch(e){}
-    try { window.dom.tradeUpgradeBtn.removeEventListener('click', () => buyResearch('trade')); } catch(e){}
-    try { window.dom.exchangeBtn.removeEventListener('click', () => exchangeCP(100)); } catch(e){}
-    try { window.dom.exchange1000Btn.removeEventListener('click', () => exchangeCP(1000)); } catch(e){}
-    try { window.dom.exchangeMaxBtn.removeEventListener('click', exchangeCPMax); } catch(e){}
+    // remove old listeners safely (try/catch)
+    try{ window.dom.plantAllBtn.removeEventListener('click', plantAll); }catch(e){}
+    try{ window.dom.harvestAllBtn.removeEventListener('click', harvestAll); }catch(e){}
+    try{ window.dom.growthUpgradeBtn.removeEventListener('click', ()=>buyUpgrade('growth')); }catch(e){}
+    try{ window.dom.yieldUpgradeBtn.removeEventListener('click', ()=>buyUpgrade('yield')); }catch(e){}
+    try{ window.dom.luckUpgradeBtn.removeEventListener('click', ()=>buyUpgrade('luck')); }catch(e){}
+    try{ window.dom.droneUpgradeBtn.removeEventListener('click', ()=>buyUpgrade('drone')); }catch(e){}
+    try{ window.dom.storageUpgradeBtn.removeEventListener('click', ()=>buyUpgrade('storage')); }catch(e){}
+    try{ window.dom.autoDeployBtn.removeEventListener('click', buyAutoDeploy); }catch(e){}
+    try{ window.dom.researchPlotBtn.removeEventListener('click', ()=>buyResearch('plots')); }catch(e){}
+    try{ window.dom.deepUpgradeBtn.removeEventListener('click', ()=>buyResearch('deep')); }catch(e){}
+    try{ window.dom.tradeUpgradeBtn.removeEventListener('click', ()=>buyResearch('trade')); }catch(e){}
+    try{ window.dom.exchangeBtn.removeEventListener('click', ()=>exchangeCP(100)); }catch(e){}
+    try{ window.dom.exchange1000Btn.removeEventListener('click', ()=>exchangeCP(1000)); }catch(e){}
+    try{ window.dom.exchangeMaxBtn.removeEventListener('click', exchangeCPMax); }catch(e){}
 
-    // Add listeners
+    // add listeners
     window.dom.plantAllBtn.addEventListener('click', plantAll);
     window.dom.harvestAllBtn.addEventListener('click', harvestAll);
-    window.dom.growthUpgradeBtn.addEventListener('click', () => buyUpgrade('growth'));
-    window.dom.yieldUpgradeBtn.addEventListener('click', () => buyUpgrade('yield'));
-    window.dom.luckUpgradeBtn.addEventListener('click', () => buyUpgrade('luck'));
-    window.dom.droneUpgradeBtn.addEventListener('click', () => buyUpgrade('drone'));
-    window.dom.storageUpgradeBtn.addEventListener('click', () => buyUpgrade('storage'));
+    window.dom.growthUpgradeBtn.addEventListener('click', ()=>buyUpgrade('growth'));
+    window.dom.yieldUpgradeBtn.addEventListener('click', ()=>buyUpgrade('yield'));
+    window.dom.luckUpgradeBtn.addEventListener('click', ()=>buyUpgrade('luck'));
+    window.dom.droneUpgradeBtn.addEventListener('click', ()=>buyUpgrade('drone'));
+    window.dom.storageUpgradeBtn.addEventListener('click', ()=>buyUpgrade('storage'));
     window.dom.autoDeployBtn.addEventListener('click', buyAutoDeploy);
-    window.dom.researchPlotBtn.addEventListener('click', () => buyResearch('plots'));
-    window.dom.deepUpgradeBtn.addEventListener('click', () => buyResearch('deep'));
-    window.dom.tradeUpgradeBtn.addEventListener('click', () => buyResearch('trade'));
-    window.dom.exchangeBtn.addEventListener('click', () => exchangeCP(100));
-    window.dom.exchange1000Btn.addEventListener('click', () => exchangeCP(1000));
+    window.dom.researchPlotBtn.addEventListener('click', ()=>buyResearch('plots'));
+    window.dom.deepUpgradeBtn.addEventListener('click', ()=>buyResearch('deep'));
+    window.dom.tradeUpgradeBtn.addEventListener('click', ()=>buyResearch('trade'));
+    window.dom.exchangeBtn.addEventListener('click', ()=>exchangeCP(100));
+    window.dom.exchange1000Btn.addEventListener('click', ()=>exchangeCP(1000));
     window.dom.exchangeMaxBtn.addEventListener('click', exchangeCPMax);
 
-    // Notification toggles listeners
-    if(window.dom.notifManual) {
+    // info buttons listeners (open info modal)
+    window.dom.growthInfoBtn.addEventListener('click', ()=> openInfo('Growth', 'growth'));
+    window.dom.yieldInfoBtn.addEventListener('click', ()=> openInfo('Yield', 'yield'));
+    window.dom.luckInfoBtn.addEventListener('click', ()=> openInfo('Luck', 'luck'));
+    window.dom.droneInfoBtn.addEventListener('click', ()=> openInfo('Drone', 'drone'));
+    window.dom.storageInfoBtn.addEventListener('click', ()=> openInfo('Storage', 'storage'));
+    window.dom.researchPlotInfo.addEventListener('click', ()=> openInfo('New Plots', 'plots'));
+    window.dom.deepInfoBtn.addEventListener('click', ()=> openInfo('Deep Mining', 'deep'));
+    window.dom.tradeInfoBtn.addEventListener('click', ()=> openInfo('Trade Routes', 'trade'));
+
+    // Notification toggles in profile: load and save on change
+    if(window.dom.notifManual){
       window.dom.notifManual.checked = !!window.gameState.notificationSettings.manual;
       window.dom.notifManual.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.manual = !!window.dom.notifManual.checked;
-        saveGame();
+        window.gameState.notificationSettings.manual = !!window.dom.notifManual.checked; saveGame();
       });
     }
-    if(window.dom.notifAuto) {
+    if(window.dom.notifAuto){
       window.dom.notifAuto.checked = !!window.gameState.notificationSettings.auto;
       window.dom.notifAuto.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.auto = !!window.dom.notifAuto.checked;
-        saveGame();
+        window.gameState.notificationSettings.auto = !!window.dom.notifAuto.checked; saveGame();
       });
     }
-    if(window.dom.notifMarket) {
+    if(window.dom.notifMarket){
       window.dom.notifMarket.checked = !!window.gameState.notificationSettings.market;
       window.dom.notifMarket.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.market = !!window.dom.notifMarket.checked;
-        saveGame();
+        window.gameState.notificationSettings.market = !!window.dom.notifMarket.checked; saveGame();
       });
     }
-    if(window.dom.notifPurchase) {
+    if(window.dom.notifPurchase){
       window.dom.notifPurchase.checked = !!window.gameState.notificationSettings.purchase;
       window.dom.notifPurchase.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.purchase = !!window.dom.notifPurchase.checked;
-        saveGame();
+        window.gameState.notificationSettings.purchase = !!window.dom.notifPurchase.checked; saveGame();
       });
     }
-    if(window.dom.notifExchange) {
+    if(window.dom.notifExchange){
       window.dom.notifExchange.checked = !!window.gameState.notificationSettings.exchange;
       window.dom.notifExchange.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.exchange = !!window.dom.notifExchange.checked;
-        saveGame();
+        window.gameState.notificationSettings.exchange = !!window.dom.notifExchange.checked; saveGame();
       });
     }
-    if(window.dom.notifSystem) {
+    if(window.dom.notifSystem){
       window.dom.notifSystem.checked = !!window.gameState.notificationSettings.system;
       window.dom.notifSystem.addEventListener('change', ()=>{
-        window.gameState.notificationSettings.system = !!window.dom.notifSystem.checked;
-        saveGame();
+        window.gameState.notificationSettings.system = !!window.dom.notifSystem.checked; saveGame();
       });
     }
 
-    // Clear existing plots and re-render based on current gameState
+    // render plots
     window.dom.farmGrid.innerHTML = '';
-    window.gameState.plots.forEach(p => {
-        let plotEl = document.createElement('div');
-        plotEl.className = `plot ${p.state}`;
-        plotEl.id = `plot-${p.id}`;
-        plotEl.innerHTML = '<div class="crop"></div><div class="progress-bar"><div class="progress-fill"></div></div>';
-        plotEl.addEventListener('click', () => handlePlot(p.id));
-        window.dom.farmGrid.appendChild(plotEl);
+    window.gameState.plots.forEach(p=>{
+      const plotEl = document.createElement('div');
+      plotEl.className = `plot ${p.state}`;
+      plotEl.id = `plot-${p.id}`;
+      plotEl.innerHTML = '<div class="crop"></div><div class="progress-bar"><div class="progress-fill"></div></div>';
+      plotEl.addEventListener('click', ()=> handlePlot(p.id));
+      window.dom.farmGrid.appendChild(plotEl);
     });
 
     if(gameLoopInterval) clearInterval(gameLoopInterval);
-    gameLoopInterval = setInterval(updateGame, 100); // 100ms interval for smoother updates
+    gameLoopInterval = setInterval(updateGame, 100);
 
-    updateUI(); // Initial UI update
+    updateUI();
   }
 
-
-  // --- Notify helper ---
-  // showNotification now respects user notificationSettings via a 'type' string.
-  // Types: 'manual', 'auto', 'market', 'purchase', 'exchange', 'system'
+  // --- Notification helper which respects settings ---
+  // types: manual, auto, market, purchase, exchange, system
   function showNotification(msg, lucky=false, type='manual'){
-    // Ensure defaults exist in case this is called before initializeGame
     if(!window.gameState) window.gameState = {};
-    if(!window.gameState.notificationSettings){
-      window.gameState.notificationSettings = { manual: true, auto: false, market: true, purchase: true, exchange: true, system: true };
-    }
-    // If user disabled this notification type, skip
+    if(!window.gameState.notificationSettings) window.gameState.notificationSettings = { manual:true, auto:false, market:true, purchase:true, exchange:true, system:true };
+    // if user disabled, skip
     if(type && window.gameState.notificationSettings && window.gameState.notificationSettings[type] === false) return;
-
-    let n=document.createElement('div');
-    n.className=`notification ${lucky?'lucky':''}`;
-    n.textContent=msg;
-    document.getElementById('notificationContainer').appendChild(n);
-    setTimeout(()=>n.classList.add('show'),20);
-    setTimeout(()=>n.classList.remove('show'),3000);
-    setTimeout(()=>n.remove(),3500);
+    const n = document.createElement('div');
+    n.className = `notification ${lucky ? 'lucky' : ''}`;
+    n.textContent = msg;
+    notificationContainer.appendChild(n);
+    setTimeout(()=> n.classList.add('show'), 20);
+    setTimeout(()=> n.classList.remove('show'), 3000);
+    setTimeout(()=> n.remove(), 3500);
   }
+
+  // --- initialize at load (no saved state) so UI elements exist and work for anonymous users ---
+  window.addEventListener('load', ()=> initializeGame(false));
 </script>
 
 <style>
-  /* 8-bit / Pixel-art Styles */
+  /* 8-bit / pixel aesthetic, but clearer layout */
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-  html,body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
+  :root {
+    --accent: #00ffea;
+    --bg: #07102a;
+    --panel: #081028;
+    --muted: #0b1f25;
+    --text: #bffef1;
+    --button-bg: #00ffea;
+    --button-fg: #001b18;
+    --danger: #ff6b6b;
+    --ok: #ffb24a;
   }
 
-  body{
-    background: linear-gradient(180deg,#07102a 0%, #0b0b1a 100%);
-    color:#00ffea;
-    font-family:'Press Start 2P', monospace;
-    font-size:12px;
-    padding:12px;
-    image-rendering: pixelated;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: grayscale;
+  html,body { height:100%; margin:0; padding:0; background: linear-gradient(180deg, #04102a 0%, #06101a 100%); font-family:'Press Start 2P', monospace; color:var(--text); -webkit-font-smoothing:none; -moz-osx-font-smoothing:grayscale; }
+
+  .wrap { max-width: 1080px; margin: 12px auto; padding: 12px; box-sizing:border-box; }
+
+  /* Title above controls */
+  .title-row { text-align:center; margin-bottom:8px; }
+  h1.title { margin:0; color:var(--accent); font-size:20px; text-shadow: 2px 2px 0 #003233; }
+
+  .game-container {
+    background: var(--panel);
+    border: 6px solid var(--accent);
+    padding: 12px;
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.5), inset 0 0 0 4px rgba(0,38,40,0.06);
+    border-radius: 0;
   }
 
-  .game-container{
-    max-width:1000px;
-    margin:10px auto;
-    background:#081028;
-    border:6px solid #00ffea;
-    padding:12px;
-    box-sizing:border-box;
-    box-shadow: 0 0 0 4px #002631 inset;
+  /* Header area with user & profile stacked beneath title */
+  .header {
+    display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px;
   }
+  .user-block { display:flex; gap:8px; align-items:center; }
+  .status-item { font-size:11px; color:#bffef1; }
 
-  /* Buttons: chunky square style */
-  .btn{
-    background:#00ffea;
-    color:#001b18;
-    font-weight:bold;
-    border:3px solid #002631;
-    padding:10px;
-    cursor:pointer;
-    font-family:'Press Start 2P',monospace;
-    font-size:11px;
-    text-align:center;
-    display:block;
-    width:100%;
-    box-sizing:border-box;
-    margin-bottom:6px;
-    border-radius:0; /* square corners for 8-bit look */
-    box-shadow: 4px 4px 0 #001b18;
-    line-height:1.1;
-  }
-  .btn:hover:enabled{ background:#b7fff0; }
-  .btn:disabled{ background:#444;color:#888;border-color:#111;box-shadow:none;cursor:not-allowed; }
+  /* Clear sections */
+  .status { margin-bottom:10px; font-size:12px; color:#bffef1; }
+  .grid-main { display:grid; grid-template-columns: 1fr 360px; gap:10px; align-items:start; }
+  @media (max-width: 900px){ .grid-main { grid-template-columns:1fr; } }
 
-  /* Notification Styles: blocky */
-  .notification-container{
-    position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:none;display:flex;flex-direction:column;gap:6px;
-  }
-  .notification{
-    background:#00ffea;
-    color:#00231f;
-    border:4px solid #002631;
-    padding:10px 16px;
-    font-size:12px;
-    opacity:0;
-    transform: translateY(-20px);
-    transition: opacity 0.2s linear, transform 0.2s linear;
-    box-shadow: 4px 4px 0 #001b18;
-    white-space:nowrap;
-    border-radius:0;
-  }
-  .notification.show{ opacity:1; transform: translateY(0); }
-  .notification.lucky{ background:#ffb24a; border-color:#7a3f00; color:#100700; }
-
-  /* Modal Styles: blocky */
-  .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);display:none;justify-content:center;align-items:center;z-index:1001;}
-  .modal-content{background:#001420;padding:20px;border:4px solid #00ffea;max-width:420px;text-align:center;position:relative;border-radius:0;box-shadow:0 0 0 6px rgba(0,255,234,0.08);}
-  .modal-content h2{color:#00ffea;margin-bottom:10px;font-size:14px;}
-  .modal-content button#closeModalProfile{position:absolute;top:6px;right:6px;background:#ff4444;color:#fff;border:none;padding:6px;cursor:pointer;font-size:12px;border-radius:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
-  .modal-content input[type="text"]{width:calc(100% - 20px);padding:8px;margin-bottom:10px;border:2px solid #00ffea;background:#061021;color:#fff;font-family:'Press Start 2P',monospace;font-size:12px;border-radius:0;}
-
-  /* Game Specific Styles */
-  .header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding: 6px;
-    background: #020616;
-    border-bottom: 3px solid #00ffea;
-  }
-  .status-info { display:flex; gap: 10px; align-items:center; }
-  .status-item { font-size: 10px; color: #b9fff2; }
   .farm-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-    padding: 10px;
-    border: 4px solid #00ffea;
-    background: #02061a;
-    min-height: 200px;
-    border-radius: 0;
+    border: 4px solid var(--accent);
+    padding:10px;
+    min-height:220px;
+    display:grid;
+    grid-template-columns: repeat(auto-fill,minmax(80px,1fr));
+    gap:10px;
+    background: #02101a;
   }
+
   .plot {
-    position: relative;
-    width: 80px;
-    height: 80px;
-    background: #001016;
-    border: 4px solid #00f6ff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 30px;
-    cursor: pointer;
-    transition: transform 0.07s ease-in-out;
-    box-shadow: 4px 4px 0 #001b18;
-    border-radius: 0;
+    width:80px; height:80px; display:flex; align-items:center; justify-content:center; font-size:28px;
+    background:#001016; border:4px solid #00f6ff; box-shadow:4px 4px 0 #001b18; cursor:pointer; transition:transform .06s;
   }
-  .plot:hover { transform: scale(1.04); }
-  .plot.planted .progress-bar { display: block; }
-  .plot.ready { border-color: #00ffea; background: #002b19; }
-  .plot.empty .crop:before { content: "✨"; }
-  .plot.planted .crop:before { content: "⛏️"; }
-  .plot.ready .crop:before { content: "💎"; }
-  .progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: rgba(0,0,0,0.6); display: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-  .progress-fill { height: 100%; background: #00f6ff; width: 0%; }
+  .plot:hover{ transform:scale(1.05); }
+  .plot.ready { border-color:var(--accent); background:#002b19; }
 
-  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
-  .section { border: 4px solid #00ffea; padding: 10px; margin-top: 10px; border-radius: 0; background:#00121f; }
-  .section h3 { color: #00f6ff; text-align: center; margin-top: 0; font-size: 14px; }
+  .progress-bar{ position:absolute; bottom:0; left:0; width:100%; height:6px; background:rgba(0,0,0,0.5); display:none; }
+  .progress-fill{ height:100%; width:0%; background:#00f6ff; }
 
-  .upgrade-grid, .research-grid, .exchange-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
-  @media (min-width: 600px) {
-    .upgrade-grid { grid-template-columns: repeat(2, 1fr); }
-    .research-grid { grid-template-columns: repeat(3, 1fr); }
-    .exchange-grid { grid-template-columns: repeat(3, 1fr); }
+  .controls { margin-top:10px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .btn {
+    background: var(--button-bg); color:var(--button-fg); border:3px solid #002631; padding:8px; cursor:pointer; font-size:11px;
+    box-shadow: 4px 4px 0 #001b18; border-radius:0; text-align:center;
   }
-  .upgrade-item, .research-item { display:flex; justify-content:space-between; align-items:center; padding:6px; border:2px solid #00f6ff; background:#00121a; border-radius:0; }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; box-shadow:none; }
 
-  .crash { color: #ff4444; font-weight: bold; }
-  .boom { color: #00ffea; font-weight: bold; }
+  .right-column { display:flex; flex-direction:column; gap:8px; }
 
-  /* Notification toggles */
-  .notif-row { display:flex; gap:8px; align-items:center; padding:6px; }
-  .notif-row input[type="checkbox"]{ width:18px; height:18px; transform:scale(1.0); }
+  .panel { border:4px solid var(--accent); padding:10px; background:#00121f; }
+  .panel h3 { margin:0 0 8px 0; color:#00f6ff; font-size:12px; text-align:center; }
+  .upgrade-grid, .research-grid, .exchange-grid { display:grid; gap:6px; }
+  .upgrade-item, .research-item { display:flex; justify-content:space-between; align-items:center; padding:6px; border:2px solid #00f6ff; background:#06121a; font-size:11px; }
+  .upgrade-item .actions { display:flex; gap:6px; align-items:center; }
 
-  /* Authentication Specific Styles */
-  #authContainer {
-    max-width: 420px;
-    margin: 50px auto;
-    padding: 20px;
-    background: #001226;
-    border: 6px solid #00ffea;
-    text-align: center;
-    border-radius: 0;
-  }
-  #authContainer input {
-    width: calc(100% - 20px);
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 2px solid #00f6ff;
-    background: #021126;
-    color: #bffef1;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 12px;
-    border-radius: 0;
-  }
-  #authContainer .btn { margin-top: 10px; }
-  #authContainer p { margin-top: 15px; font-size: 10px; color:#9ff7ef; }
+  /* small info (?) button */
+  .info-btn { width:26px; height:26px; background:#00ffea; color:#001b18; border:3px solid #002631; box-shadow: 4px 4px 0 #001b18; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; border-radius:0; }
+  .small { font-size:11px; padding:6px; }
 
-  /* Small tweaks */
-  .status p { margin: 6px 0; color:#bffef1; font-size:12px; }
-  .status { margin-bottom: 8px; }
+  /* notifications */
+  .notification-container{ position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:2000; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+  .notification { background:var(--button-bg); color:var(--button-fg); border:4px solid #002631; padding:8px 12px; opacity:0; transform:translateY(-18px); transition: all .18s linear; box-shadow:4px 4px 0 #001b18; white-space:nowrap; }
+  .notification.show{ opacity:1; transform:translateY(0); }
+  .notification.lucky { background:var(--ok); border-color:#7a3f00; color:#100700; }
+
+  /* Auth container */
+  #authContainer { max-width:420px; margin:40px auto; padding:16px; background:#001226; border:6px solid var(--accent); text-align:center; }
+  #authContainer input[type="email"], #authContainer input[type="password"] { width:100%; padding:8px; margin-bottom:8px; background:#021126; border:2px solid #00f6ff; color:var(--text); font-family:inherit; }
+
+  /* Profile modal */
+  .modal { display:none; position:fixed; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.7); align-items:center; justify-content:center; z-index:3000; }
+  .modal-content { width:420px; background:#001420; border:4px solid var(--accent); padding:12px; box-sizing:border-box; }
+  .modal-content h2 { margin:0 0 8px 0; color:var(--accent); font-size:14px; text-align:center; }
+  .modal-content label { display:block; font-size:11px; margin-top:6px; color:#bffef1; }
+  .modal-content input[type="text"], .modal-content input[type="password"] { width:100%; padding:8px; border:2px solid #00f6ff; background:#061021; color:var(--text); margin-top:6px; }
+
+  /* Info modal */
+  #infoModal .modal-content{ max-width:500px; width:90%; }
+  #infoBody { margin-top:10px; font-size:12px; color:#d9fff7; }
+
+  /* profile toggles layout */
+  .notif-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px; }
+  .notif-row { display:flex; gap:8px; align-items:center; }
+
+  /* footer small tip */
+  .muted { color:#74d8cc; font-size:11px; margin-top:6px; }
 
 </style>
 </head>
 <body>
+  <div class="wrap">
 
-<!-- Auth UI -->
-<div id="authContainer">
-  <h2 style="color:#00f6ff;">Astro Colony</h2>
-  <form id="loginForm">
-    <input type="email" id="loginEmail" placeholder="Email" required>
-    <input type="password" id="loginPassword" placeholder="Password" required>
-    <button type="submit" class="btn">Login</button>
-  </form>
-  <p>Don't have an account? <button class="btn" id="showRegister">Register</button></p>
-  <form id="registerForm" style="display:none;">
-    <input type="email" id="registerEmail" placeholder="Email" required>
-    <input type="password" id="registerPassword" placeholder="Password" required>
-    <button type="submit" class="btn">Register</button>
-  </form>
-  <p>Already have an account? <button class="btn" id="showLogin">Login</button></p>
-</div>
-
-<!-- Game UI -->
-<div class="game-container" id="gameContainer" style="display:none;">
-  <div class="header-bar">
-    <h1>🌌 Astro Colony</h1>
-    <div class="status-info">
-      <span class="status-item" id="userStatus">Not logged in</span>
-      <button class="btn" id="profileBtn" style="width:auto; padding:5px 10px; font-size:10px; margin-bottom:0;">👤 Profile</button>
-      <button class="btn" id="logoutBtn" style="width:auto; padding:5px 10px; font-size:10px; margin-bottom:0;">🚪 Logout</button>
+    <!-- Title (above header) -->
+    <div class="title-row">
+      <h1 class="title">🌌 Astro Colony</h1>
     </div>
-  </div>
 
-  <div class="status">
-    <p>Crystals: <span id="applePoints">0</span> | Gold: <span id="gold">0</span> cr</p>
-    <p>Day: <span id="seasonDay">1</span> (<span id="seasonTimer"></span>)</p>
-    <p id="marketStatus"><span id="crashTimer"></span></p>
-  </div>
-
-  <div class="farm-grid" id="farmGrid">
-    <!-- Plots will be dynamically added here by JavaScript -->
-  </div>
-
-  <!-- Action buttons: Hide this div when autoDeploy is active -->
-  <div class="controls" id="gameActionButtons">
-    <button class="btn" id="plantAllBtn">Deploy All Drones (<span id="plantCost">0</span> cr)</button>
-    <button class="btn" id="harvestAllBtn">Collect All Crystals</button>
-  </div>
-
-  <div class="section">
-    <h3>🛠️ Upgrades</h3>
-    <div class="upgrade-grid">
-      <div class="upgrade-item">Growth Lvl: <span id="growthLevel">1</span> <button class="btn" id="growthUpgradeBtn">Upgrade</button></div>
-      <div class="upgrade-item">Yield Lvl: <span id="yieldLevel">1</span> <button class="btn" id="yieldUpgradeBtn">Upgrade</button></div>
-      <div class="upgrade-item">Luck Lvl: <span id="luckLevel">1</span> <button class="btn" id="luckUpgradeBtn">Upgrade</button></div>
-      <div class="upgrade-item">Drone Lvl: <span id="droneLevel">1</span> <button class="btn" id="droneUpgradeBtn">Upgrade</button></div>
-      <div class="upgrade-item">Storage Lvl: <span id="storageLevel">1</span> <button class="btn" id="storageUpgradeBtn">Upgrade</button></div>
-      <button class="btn" id="autoDeployBtn">Buy Autonomous Drone AI (5000 cr)</button>
+    <!-- Auth UI (shown when logged out) -->
+    <div id="authContainer">
+      <h2 style="color:#00f6ff; margin:0 0 8px 0;">Welcome to Astro Colony</h2>
+      <form id="loginForm">
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button class="btn small" type="submit">LOGIN</button>
+      </form>
+      <div style="margin-top:8px;">
+        <button id="showRegister" class="btn small">Create account</button>
+      </div>
+      <form id="registerForm" style="display:none; margin-top:8px;">
+        <input type="email" id="registerEmail" placeholder="Email" required>
+        <input type="password" id="registerPassword" placeholder="Password" required>
+        <button class="btn small" type="submit">REGISTER</button>
+      </form>
+      <div style="margin-top:8px;">
+        <button id="showLogin" class="btn small">Back to Login</button>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <h3>🔬 Research</h3>
-    <div class="research-grid">
-      <div class="research-item">New Plots Lvl: <span id="researchPlots">0</span> <button class="btn" id="researchPlotBtn">Research</button></div>
-      <div class="research-item">Deep Mining Lvl: <span id="deepLevel">0</span> <button class="btn" id="deepUpgradeBtn">Research</button></div>
-      <div class="research-item">Trade Routes Lvl: <span id="tradeLevel">0</span> <button class="btn" id="tradeTradeBtn">Research</button></div>
+    <!-- Game container (shown when logged in) -->
+    <div class="game-container" id="gameContainer" style="display:none;">
+      <div class="header">
+        <div class="user-block">
+          <span class="status-item" id="userStatus">Not logged in</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn small" id="profileBtn">👤 Profile</button>
+          <button class="btn small" id="logoutBtn">🚪 Logout</button>
+        </div>
+      </div>
+
+      <div class="status">
+        <p>Crystals: <strong id="applePoints">0</strong> | Gold: <strong id="gold">0</strong> cr</p>
+        <p>Day: <span id="seasonDay">1</span> (<span id="seasonTimer"></span>)</p>
+        <p id="marketStatus"><span id="crashTimer"></span></p>
+      </div>
+
+      <div class="grid-main">
+        <!-- Left: farm -->
+        <div>
+          <div class="farm-grid" id="farmGrid"></div>
+
+          <div class="controls" id="gameActionButtons" style="margin-top:10px;">
+            <button class="btn small" id="plantAllBtn">Deploy All Drones (<span id="plantCost">0</span> cr)</button>
+            <button class="btn small" id="harvestAllBtn">Collect All Crystals</button>
+          </div>
+        </div>
+
+        <!-- Right: upgrades, research, exchange -->
+        <div class="right-column">
+          <div class="panel">
+            <h3>🛠️ Upgrades</h3>
+            <div class="upgrade-grid">
+              <div class="upgrade-item">
+                <div>Growth Lvl: <span id="growthLevel">1</span></div>
+                <div class="actions">
+                  <button id="info-growth" class="info-btn">?</button>
+                  <button class="btn small" id="growthUpgradeBtn">Upgrade</button>
+                </div>
+              </div>
+
+              <div class="upgrade-item">
+                <div>Yield Lvl: <span id="yieldLevel">1</span></div>
+                <div class="actions">
+                  <button id="info-yield" class="info-btn">?</button>
+                  <button class="btn small" id="yieldUpgradeBtn">Upgrade</button>
+                </div>
+              </div>
+
+              <div class="upgrade-item">
+                <div>Luck Lvl: <span id="luckLevel">1</span></div>
+                <div class="actions">
+                  <button id="info-luck" class="info-btn">?</button>
+                  <button class="btn small" id="luckUpgradeBtn">Upgrade</button>
+                </div>
+              </div>
+
+              <div class="upgrade-item">
+                <div>Drone Lvl: <span id="droneLevel">1</span></div>
+                <div class="actions">
+                  <button id="info-drone" class="info-btn">?</button>
+                  <button class="btn small" id="droneUpgradeBtn">Upgrade</button>
+                </div>
+              </div>
+
+              <div class="upgrade-item">
+                <div>Storage Lvl: <span id="storageLevel">1</span></div>
+                <div class="actions">
+                  <button id="info-storage" class="info-btn">?</button>
+                  <button class="btn small" id="storageUpgradeBtn">Upgrade</button>
+                </div>
+              </div>
+
+              <div style="margin-top:6px;">
+                <button class="btn small" id="autoDeployBtn">Buy Autonomous Drone AI (5000 cr)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>🔬 Research</h3>
+            <div class="research-grid">
+              <div class="research-item">
+                <div>New Plots Lvl: <span id="researchPlots">0</span></div>
+                <div class="actions">
+                  <button id="info-plots" class="info-btn">?</button>
+                  <button class="btn small" id="researchPlotBtn">Research</button>
+                </div>
+              </div>
+
+              <div class="research-item">
+                <div>Deep Mining Lvl: <span id="deepLevel">0</span></div>
+                <div class="actions">
+                  <button id="info-deep" class="info-btn">?</button>
+                  <button class="btn small" id="deepUpgradeBtn">Research</button>
+                </div>
+              </div>
+
+              <div class="research-item">
+                <div>Trade Routes Lvl: <span id="tradeLevel">0</span></div>
+                <div class="actions">
+                  <button id="info-trade" class="info-btn">?</button>
+                  <button class="btn small" id="tradeTradeBtn">Research</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>💰 Market Exchange</h3>
+            <div class="exchange-grid">
+              <button class="btn small" id="exchangeBtn">Exchange 100 CP</button>
+              <button class="btn small" id="exchange1000Btn">Exchange 1000 CP</button>
+              <button class="btn small" id="exchangeMaxBtn">Exchange All CP</button>
+              <div style="margin-top:6px; text-align:center;">Rate: <strong id="exchangeRate">0.50</strong> cr/CP</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <h3>🔔 Notifications</h3>
-    <div class="exchange-grid" style="grid-template-columns: repeat(2,1fr);">
-      <label class="notif-row"><input type="checkbox" id="notifManual"> Manual Actions</label>
-      <label class="notif-row"><input type="checkbox" id="notifAuto"> Auto Farming</label>
-      <label class="notif-row"><input type="checkbox" id="notifMarket"> Market Events</label>
-      <label class="notif-row"><input type="checkbox" id="notifPurchase"> Purchases/Upgrades</label>
-      <label class="notif-row"><input type="checkbox" id="notifExchange"> Exchanges</label>
-      <label class="notif-row"><input type="checkbox" id="notifSystem"> System</label>
+    <!-- Notifications container -->
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Profile Modal (moved notification toggles here and change-password) -->
+    <div class="modal" id="profileModal">
+      <div class="modal-content">
+        <button id="closeModalProfile" class="btn small" style="position:absolute; right:8px; top:8px;">✖</button>
+        <h2>👤 Your Profile</h2>
+        <p style="margin:6px 0;"><strong>Email:</strong> <span id="profileEmailDisplay"></span></p>
+
+        <label>Username</label>
+        <input type="text" id="usernameInput" placeholder="Enter username" />
+        <div style="margin-top:8px;">
+          <button class="btn small" id="saveUsernameBtn">Save Username</button>
+        </div>
+
+        <hr style="border:1px dashed #003233; margin:10px 0;" />
+
+        <h3 style="color:#00f6ff; margin:6px 0 8px 0; font-size:12px; text-align:left;">🔔 Notifications</h3>
+        <div class="notif-grid">
+          <label class="notif-row"><input type="checkbox" id="notifManual"> Manual Actions</label>
+          <label class="notif-row"><input type="checkbox" id="notifAuto"> Auto Farming</label>
+          <label class="notif-row"><input type="checkbox" id="notifMarket"> Market Events</label>
+          <label class="notif-row"><input type="checkbox" id="notifPurchase"> Purchases/Upgrades</label>
+          <label class="notif-row"><input type="checkbox" id="notifExchange"> Exchanges</label>
+          <label class="notif-row"><input type="checkbox" id="notifSystem"> System</label>
+        </div>
+        <div class="muted">Tip: Auto Farming notifications default to OFF to avoid spam.</div>
+
+        <hr style="border:1px dashed #003233; margin:10px 0;" />
+
+        <h3 style="color:#00f6ff; margin:6px 0 8px 0; font-size:12px; text-align:left;">🔒 Change Password</h3>
+        <label>Current password</label>
+        <input type="password" id="currentPassword" placeholder="Current password" />
+        <label>New password</label>
+        <input type="password" id="newPassword" placeholder="New password" />
+        <div style="margin-top:8px;">
+          <button class="btn small" id="changePasswordBtn">Change Password</button>
+        </div>
+
+      </div>
     </div>
-    <div style="color:#bffef1; margin-top:6px; font-size:11px;">Tip: Auto Farming notifications default to OFF to avoid spam.</div>
-  </div>
 
-  <div class="section">
-    <h3>💰 Market Exchange</h3>
-    <div class="exchange-grid">
-      <button class="btn" id="exchangeBtn">Exchange 100 CP</button>
-      <button class="btn" id="exchange1000Btn">Exchange 1000 CP</button>
-      <button class="btn" id="exchangeMaxBtn">Exchange All CP</button>
-      <div style="grid-column: 1 / -1; text-align:center; margin-top:6px; color:#bffef1;">Rate: <span id="exchangeRate">0.50</span> cr/CP</div>
+    <!-- Info modal for upgrade/research explanations -->
+    <div class="modal" id="infoModal">
+      <div class="modal-content">
+        <button id="closeInfoBtn" class="btn small" style="position:absolute; right:8px; top:8px;">✖</button>
+        <h2 id="infoTitle">Info</h2>
+        <div id="infoBody">Description</div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div class="notification-container" id="notificationContainer"></div>
+  </div> <!-- wrap -->
 
-<!-- Profile Modal -->
-<div class="modal" id="profileModal">
-  <div class="modal-content">
-    <button id="closeModalProfile">✖</button>
-    <h2>👤 Your Profile</h2>
-    <p><strong>Email:</strong> <span id="profileEmailDisplay"></span></p>
-    <p><strong>Username:</strong></p>
-    <input type="text" id="usernameInput" placeholder="Enter a username">
-    <button class="btn" id="saveUsernameBtn" style="width:100%;">Save Username</button>
-  </div>
-</div>
+  <script>
+    // small script to populate profile fields when opening modal (kept here for clarity)
+    // Note: initializeGame sets up listeners for toggles; this ensures the modal displays actual user email on open.
+    function openProfileModal(){
+      const user = firebaseAuth.currentUser;
+      if(user){
+        profileEmailDisplay.textContent = user.email;
+        usernameInput.value = user.displayName || '';
+      } else {
+        profileEmailDisplay.textContent = 'Guest';
+        usernameInput.value = '';
+      }
+      // ensure toggles reflect current settings
+      if(window.gameState && window.gameState.notificationSettings){
+        const s = window.gameState.notificationSettings;
+        document.getElementById('notifManual').checked = !!s.manual;
+        document.getElementById('notifAuto').checked = !!s.auto;
+        document.getElementById('notifMarket').checked = !!s.market;
+        document.getElementById('notifPurchase').checked = !!s.purchase;
+        document.getElementById('notifExchange').checked = !!s.exchange;
+        document.getElementById('notifSystem').checked = !!s.system;
+      }
+      profileModal.style.display = 'flex';
+    }
+    function closeProfileModal(){ profileModal.style.display = 'none'; }
+    // expose functions used by module script
+    window.openProfileModal = openProfileModal;
+    window.closeProfileModal = closeProfileModal;
 
+    // hook profile modal open button (this duplicates event in module script for non-module parts)
+    document.getElementById('profileBtn').addEventListener('click', openProfileModal);
+  </script>
 </body>
 </html>
